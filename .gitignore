@@ -10,5 +10,5 @@ __pycache__/
 venv/
 
 # Personal runtime records
-english-work-abroad-coach/data/checkins.jsonl
-english-work-abroad-coach/data/reminder.log
+*/data/checkins.jsonl
+*/data/reminder.log

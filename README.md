@@ -1,23 +1,37 @@
 # English Work Abroad Coach
 
-A portable Agent Skill for daily English learning toward future overseas work.
+A versioned collection of English-learning agent skills for daily study toward future overseas work.
 
-This repository contains one skill, `english-work-abroad-coach`, designed for Claude Code, Codex, and opencode. It generates daily 30/60-minute study tasks, tracks check-ins and streaks, supports 50-day and 500-day goals, and can install a local desktop reminder on Linux.
+The currently usable implementation is the Claude Code / Codex / opencode version. OpenClaw and Hermes folders are reserved as sibling version targets for future implementations.
 
-## What It Does
-
-- Generates daily English tasks for a full-time worker schedule.
-- Uses a 30-minute weekday plan and a 60-minute weekend plan.
-- Tracks check-ins, missed days, current streak, longest streak, and completion rate.
-- Keeps a 50-day cycle system inside a 500-day long-term goal.
-- Provides scientific learning guidance: spaced practice, retrieval practice, comprehensible input, shadowing, output, and feedback.
-- Installs dependencies into a local `.venv` instead of system Python.
-- Supports a user-level `systemd` timer for daily reminders.
-
-## Project Layout
+## Versions
 
 ```text
 english-work-abroad-coach/
+  README.md
+  claudecode-codex-opencode/   # current working Agent Skill
+  openclaw/                    # future OpenClaw version
+  hermes/                      # future Hermes version
+```
+
+## Current Version
+
+`claudecode-codex-opencode/` contains the working Agent Skill for Claude Code, Codex, and opencode.
+
+It can:
+
+- Generate daily English tasks for a full-time worker schedule.
+- Use a 30-minute weekday plan and a 60-minute weekend plan.
+- Track check-ins, missed days, current streak, longest streak, and completion rate.
+- Maintain a 50-day cycle system inside a 500-day long-term goal.
+- Apply scientific learning guidance: spaced practice, retrieval practice, comprehensible input, shadowing, output, and feedback.
+- Install dependencies into a local `.venv` instead of system Python.
+- Install a user-level `systemd` timer for daily reminders.
+
+## Current Version Layout
+
+```text
+claudecode-codex-opencode/
   SKILL.md
   agents/openai.yaml
   requirements.txt
@@ -31,12 +45,14 @@ english-work-abroad-coach/
   tests/
 ```
 
+The skill name inside `SKILL.md` remains `english-work-abroad-coach`. If an agent requires the folder name to match the skill name, copy or symlink `claudecode-codex-opencode/` into that agent's skill directory as `english-work-abroad-coach`.
+
 ## Setup
 
 From the repository root:
 
 ```bash
-cd english-work-abroad-coach
+cd claudecode-codex-opencode
 python3 scripts/bootstrap.py
 ```
 
@@ -53,6 +69,7 @@ The bootstrap script creates `.venv`, installs dependencies from `requirements.t
 Show today's task:
 
 ```bash
+cd claudecode-codex-opencode
 .venv/bin/python scripts/english_coach.py today
 ```
 
@@ -87,6 +104,7 @@ Show progress:
 Install a daily Linux desktop reminder at 21:00:
 
 ```bash
+cd claudecode-codex-opencode
 .venv/bin/python scripts/install_reminder.py --time 21:00
 ```
 
@@ -104,7 +122,7 @@ systemctl --user disable --now english-work-abroad-coach.timer
 
 ## Skill Installation
 
-Copy or symlink `english-work-abroad-coach/` into the skill directory used by your agent.
+Copy or symlink the current version into the skill directory used by your agent.
 
 Common locations:
 
@@ -112,29 +130,35 @@ Common locations:
 - Codex: `~/.codex/skills/english-work-abroad-coach` or `~/.agents/skills/english-work-abroad-coach`
 - opencode: use the same Agent Skills folder shape if your install supports skills
 
+Example:
+
+```bash
+ln -s /path/to/english-work-abroad-coach/claudecode-codex-opencode ~/.codex/skills/english-work-abroad-coach
+```
+
 If the tool cannot auto-discover the skill, invoke it by path and ask the agent to read `SKILL.md`.
 
 ## Runtime Data
 
-The repository keeps templates under `data/`, but personal runtime records are ignored by git:
+The repository keeps templates under each version's `data/`, but personal runtime records are ignored by git:
 
-- `english-work-abroad-coach/data/checkins.jsonl`
-- `english-work-abroad-coach/data/reminder.log`
-- `english-work-abroad-coach/.venv/`
+- `*/data/checkins.jsonl`
+- `*/data/reminder.log`
+- `.venv/`
 
 This keeps private learning history and local environment files out of GitHub.
 
 ## Validation
 
-Run tests:
+Run tests for the current version:
 
 ```bash
-cd english-work-abroad-coach
+cd claudecode-codex-opencode
 PYTHONDONTWRITEBYTECODE=1 .venv/bin/python -m unittest discover -s tests -v
 ```
 
 Validate the skill metadata with Codex's skill validator if available:
 
 ```bash
-.venv/bin/python /path/to/skill-creator/scripts/quick_validate.py /path/to/english-work-abroad-coach
+.venv/bin/python /path/to/skill-creator/scripts/quick_validate.py /path/to/claudecode-codex-opencode
 ```
