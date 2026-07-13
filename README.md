@@ -2,7 +2,7 @@
 
 A versioned collection of English-learning agent skills for daily study toward future overseas work.
 
-The Claude Code / Codex / opencode version is the primary tested version. OpenClaw v1 is also available as a platform-specific adaptation. Hermes is reserved as a future version target.
+The Claude Code / Codex / opencode version is the primary tested version. OpenClaw v1 and Hermes v1 are also available as platform-specific adaptations.
 
 ## Versions
 
@@ -11,7 +11,7 @@ english-work-abroad-coach/
   README.md
   claudecode-codex-opencode/   # current working Agent Skill
   openclaw/                    # OpenClaw v1 adaptation
-  hermes/                      # future Hermes version
+  hermes/                      # Hermes v1 adaptation
 ```
 
 ## Claude Code / Codex / opencode Version
@@ -62,7 +62,30 @@ OpenClaw validation:
 PYTHONDONTWRITEBYTECODE=1 .venv/bin/python -m unittest discover -s tests -v
 ```
 
-The skill name inside `SKILL.md` remains `english-work-abroad-coach`. If an agent requires the folder name to match the skill name, copy or symlink `claudecode-codex-opencode/` into that agent's skill directory as `english-work-abroad-coach`.
+The skill name inside `SKILL.md` remains `english-work-abroad-coach`. If an agent requires the folder name to match the skill name, copy or symlink `openclaw/` into that agent's skill directory as `english-work-abroad-coach`.
+
+## Hermes Version
+
+`hermes/` contains the Hermes v1 adaptation. It keeps the same Python coach utilities and learning references, but uses a Hermes-specific `SKILL.md` with `metadata.hermes` tags and a default 21:00 daily reminder blueprint.
+
+Hermes setup:
+
+```bash
+cd hermes
+python3 scripts/bootstrap.py
+```
+
+Hermes validation:
+
+```bash
+PYTHONDONTWRITEBYTECODE=1 .venv/bin/python -m unittest discover -s tests -v
+```
+
+Install or symlink this folder into the Hermes skill directory as `english-work-abroad-coach`, for example:
+
+```bash
+ln -s /path/to/english-work-abroad-coach/hermes ~/.hermes/skills/english-work-abroad-coach
+```
 
 ## Setup
 
