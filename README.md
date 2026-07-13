@@ -2,7 +2,7 @@
 
 A versioned collection of English-learning agent skills for daily study toward future overseas work.
 
-The currently usable implementation is the Claude Code / Codex / opencode version. OpenClaw and Hermes folders are reserved as sibling version targets for future implementations.
+The Claude Code / Codex / opencode version is the primary tested version. OpenClaw v1 is also available as a platform-specific adaptation. Hermes is reserved as a future version target.
 
 ## Versions
 
@@ -10,11 +10,11 @@ The currently usable implementation is the Claude Code / Codex / opencode versio
 english-work-abroad-coach/
   README.md
   claudecode-codex-opencode/   # current working Agent Skill
-  openclaw/                    # future OpenClaw version
+  openclaw/                    # OpenClaw v1 adaptation
   hermes/                      # future Hermes version
 ```
 
-## Current Version
+## Claude Code / Codex / opencode Version
 
 `claudecode-codex-opencode/` contains the working Agent Skill for Claude Code, Codex, and opencode.
 
@@ -43,6 +43,23 @@ claudecode-codex-opencode/
   references/
   data/
   tests/
+```
+
+## OpenClaw Version
+
+`openclaw/` contains the OpenClaw v1 adaptation. It keeps the same Python coach utilities and learning references, but uses an OpenClaw-specific `SKILL.md` with `metadata.openclaw` fields and tool-gating guidance.
+
+OpenClaw setup:
+
+```bash
+cd openclaw
+python3 scripts/bootstrap.py
+```
+
+OpenClaw validation:
+
+```bash
+PYTHONDONTWRITEBYTECODE=1 .venv/bin/python -m unittest discover -s tests -v
 ```
 
 The skill name inside `SKILL.md` remains `english-work-abroad-coach`. If an agent requires the folder name to match the skill name, copy or symlink `claudecode-codex-opencode/` into that agent's skill directory as `english-work-abroad-coach`.
