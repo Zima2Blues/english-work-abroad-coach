@@ -4,6 +4,22 @@ A versioned collection of English-learning agent skills for daily study toward f
 
 The Claude Code / Codex / opencode version is the primary tested version. OpenClaw v1 and Hermes v1 are also available as platform-specific adaptations.
 
+## Runtime Prerequisite
+
+The bundled scripts require Python 3.9 or newer; Python 3.12 is recommended.
+Normal bootstrap creates a local `.venv` without installing third-party runtime
+packages. If the machine has no suitable Python, install Python 3.12 with `uv`:
+
+```bash
+uv python install 3.12
+cd claudecode-codex-opencode
+PYTHON="$(uv python find 3.12)"
+"$PYTHON" scripts/bootstrap.py --python "$PYTHON"
+```
+
+See `claudecode-codex-opencode/references/installing.md` for `uv` installation
+and Windows PowerShell commands.
+
 ## Versions
 
 ```text
@@ -29,7 +45,7 @@ https://github.com/Zima2Blues/english-work-abroad-coach.git
 ```text
 Install the English Work Abroad Coach skill from https://github.com/Zima2Blues/english-work-abroad-coach.git.
 
-Use the claudecode-codex-opencode version. Clone or update the repo locally, run `python3 scripts/bootstrap.py` inside `claudecode-codex-opencode/`, then install or symlink that folder as `english-work-abroad-coach` in this agent's skills directory. Verify it with `.venv/bin/python scripts/english_coach.py today`.
+Use the claudecode-codex-opencode version. Clone or update the repo locally, ensure Python 3.9+ is selected, run `python3 scripts/bootstrap.py` inside `claudecode-codex-opencode/`, then install or symlink that folder as `english-work-abroad-coach` in this agent's skills directory. If Python 3.9+ is unavailable, use the repository's uv Python 3.12 instructions. Verify it with `.venv/bin/python scripts/english_coach.py today`.
 ```
 
 Typical install commands:
@@ -50,7 +66,7 @@ For Claude Code, use `~/.claude/skills/english-work-abroad-coach` instead of `~/
 ```text
 Install the English Work Abroad Coach skill from https://github.com/Zima2Blues/english-work-abroad-coach.git.
 
-Use the openclaw version. Clone or update the repo locally, run `python3 scripts/bootstrap.py` inside `openclaw/`, then install or symlink that folder as `english-work-abroad-coach` in OpenClaw's skills directory. Verify it with `.venv/bin/python scripts/english_coach.py today`.
+Use the openclaw version. Clone or update the repo locally, ensure Python 3.9+ is selected, run `python3 scripts/bootstrap.py` inside `openclaw/`, then install or symlink that folder as `english-work-abroad-coach` in OpenClaw's skills directory. If Python 3.9+ is unavailable, use the repository's uv Python 3.12 instructions. Verify it with `.venv/bin/python scripts/english_coach.py today`.
 ```
 
 ### Hermes
@@ -58,7 +74,7 @@ Use the openclaw version. Clone or update the repo locally, run `python3 scripts
 ```text
 Install the English Work Abroad Coach skill from https://github.com/Zima2Blues/english-work-abroad-coach.git.
 
-Use the hermes version. Clone or update the repo locally, run `python3 scripts/bootstrap.py` inside `hermes/`, then install or symlink that folder as `english-work-abroad-coach` in `~/.hermes/skills/`. Verify it with `.venv/bin/python scripts/english_coach.py today`.
+Use the hermes version. Clone or update the repo locally, ensure Python 3.9+ is selected, run `python3 scripts/bootstrap.py` inside `hermes/`, then install or symlink that folder as `english-work-abroad-coach` in `~/.hermes/skills/`. If Python 3.9+ is unavailable, use the repository's uv Python 3.12 instructions. Verify it with `.venv/bin/python scripts/english_coach.py today`.
 ```
 
 Typical Hermes commands:
@@ -90,7 +106,7 @@ It can:
 - Track check-ins, missed days, current streak, longest streak, and completion rate.
 - Maintain a 50-day cycle system inside a 500-day long-term goal.
 - Apply scientific learning guidance: spaced practice, retrieval practice, comprehensible input, shadowing, output, and feedback.
-- Install dependencies into a local `.venv` instead of system Python.
+- Create a local `.venv` without adding runtime dependencies to system Python.
 - Install a user-level `systemd` timer for daily reminders.
 
 ## Current Version Layout
@@ -99,7 +115,7 @@ It can:
 claudecode-codex-opencode/
   SKILL.md
   agents/openai.yaml
-  requirements.txt
+  requirements-dev.txt
   scripts/
     bootstrap.py
     english_coach.py
@@ -143,7 +159,7 @@ python3 scripts/bootstrap.py
 OpenClaw validation:
 
 ```bash
-PYTHONDONTWRITEBYTECODE=1 .venv/bin/python -m unittest discover -s tests -v
+python3 scripts/bootstrap.py --dev
 ```
 
 The skill name inside `SKILL.md` remains `english-work-abroad-coach`. If an agent requires the folder name to match the skill name, copy or symlink `openclaw/` into that agent's skill directory as `english-work-abroad-coach`.
@@ -162,7 +178,7 @@ python3 scripts/bootstrap.py
 Hermes validation:
 
 ```bash
-PYTHONDONTWRITEBYTECODE=1 .venv/bin/python -m unittest discover -s tests -v
+python3 scripts/bootstrap.py --dev
 ```
 
 Install or symlink this folder into the Hermes skill directory as `english-work-abroad-coach`, for example:
@@ -186,7 +202,9 @@ To use a specific Python:
 python3 scripts/bootstrap.py --python /path/to/python3.12
 ```
 
-The bootstrap script creates `.venv`, installs dependencies from `requirements.txt`, and runs self-tests.
+Normal bootstrap creates `.venv`, runs the runtime smoke test, and installs no
+third-party packages. Add `--dev` to install `requirements-dev.txt` and run all
+development tests.
 
 ## Basic Usage
 
@@ -277,6 +295,12 @@ This keeps private learning history and local environment files out of GitHub.
 Run every distribution test and the repository's local skill metadata validator:
 
 ```bash
+uv python install 3.12
+PYTHON="$(uv python find 3.12)"
+"$PYTHON" claudecode-codex-opencode/scripts/bootstrap.py \
+  --root claudecode-codex-opencode \
+  --python "$PYTHON" \
+  --dev
 claudecode-codex-opencode/.venv/bin/python tools/verify_project.py \
   --python claudecode-codex-opencode/.venv/bin/python
 ```

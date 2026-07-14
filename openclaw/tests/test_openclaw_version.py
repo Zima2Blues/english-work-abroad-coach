@@ -27,13 +27,13 @@ class OpenClawVersionTests(unittest.TestCase):
         openclaw = frontmatter["metadata"]["openclaw"]
         self.assertEqual(openclaw["skillKey"], "english-work-abroad-coach")
         self.assertTrue(openclaw["userInvocable"])
-        self.assertEqual(openclaw["requires"]["anyBins"], ["python3", "python"])
+        self.assertEqual(openclaw["requires"]["anyBins"], ["python3", "python", "uv"])
 
     def test_openclaw_files_are_self_contained(self):
         expected = [
             "SKILL.md",
             "README.md",
-            "requirements.txt",
+            "requirements-dev.txt",
             "scripts/bootstrap.py",
             "scripts/english_coach.py",
             "scripts/reminder_runner.py",
@@ -42,6 +42,7 @@ class OpenClawVersionTests(unittest.TestCase):
             "references/plan-system.md",
             "data/plan.json",
             "data/progress.json",
+            "tests/test_runtime_smoke.py",
         ]
 
         for relative in expected:

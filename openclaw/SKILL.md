@@ -12,6 +12,7 @@ metadata:
       anyBins:
         - python3
         - python
+        - uv
 ---
 
 # English Work Abroad Coach for OpenClaw
@@ -22,7 +23,7 @@ Use this OpenClaw skill as a daily English coach for overseas work readiness. It
 
 ## First-Time Setup
 
-From this skill folder:
+Use Python 3.9 or newer. From this skill folder:
 
 ```bash
 python3 scripts/bootstrap.py
@@ -34,7 +35,15 @@ If the machine has a preferred Python:
 python3 scripts/bootstrap.py --python /path/to/python3.12
 ```
 
-The bootstrap step creates a local `.venv`, installs `requirements.txt`, and runs tests. Do not install packages into the system Python unless the user explicitly asks.
+Normal bootstrap creates a local `.venv`, runs the standard-library smoke test,
+and installs no third-party packages. Use `python3 scripts/bootstrap.py --dev`
+only for development metadata validation. If Python 3.9+ is unavailable:
+
+```bash
+uv python install 3.12
+PYTHON="$(uv python find 3.12)"
+"$PYTHON" scripts/bootstrap.py --python "$PYTHON"
+```
 
 ## OpenClaw Usage
 

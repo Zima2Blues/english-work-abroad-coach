@@ -25,14 +25,18 @@ If a tool cannot auto-discover the skill, invoke it by path and ask the agent to
 
 ## First-Time Setup
 
-On a new computer, bootstrap the skill before using scripts:
+On a new computer, use Python 3.9 or newer and bootstrap the skill before using
+scripts:
 
 ```bash
 cd /path/to/english-work-abroad-coach
 python3 scripts/bootstrap.py
 ```
 
-The bootstrap script creates a local `.venv`, installs `requirements.txt`, and runs the skill self-tests. It does not install packages into the system Python. If the machine has a preferred interpreter, pass it explicitly:
+The normal bootstrap creates a local `.venv`, runs a standard-library smoke
+test, and does not install third-party packages. If the machine has no suitable
+Python, read `references/installing.md` for the `uv` Python 3.12 flow. For
+development validation, use `python3 scripts/bootstrap.py --dev`.
 
 ```bash
 python3 scripts/bootstrap.py --python /path/to/python3.12
@@ -178,7 +182,7 @@ Ask the user to send this format:
 
 - `scripts/english_coach.py`: plan generation, check-in persistence, progress summary, reminders.
 - `scripts/bootstrap.py`: local `.venv` creation, dependency installation, and self-test bootstrap.
-- `requirements.txt`: Python dependencies required for bundled tooling.
+- `requirements-dev.txt`: PyYAML used only for development metadata validation.
 - `scripts/install_reminder.py`: user-level systemd timer installer for daily reminders.
 - `scripts/reminder_runner.py`: one-shot reminder runner used by the timer.
 - `data/plan.json`: editable personal plan.

@@ -212,7 +212,7 @@ english-work-abroad-coach/
 - Create: `tests/test_verify_project.py`
 - Modify: `README.md`
 
-- [ ] **Step 1：先写验证工具的单元测试**
+- [x] **Step 1：先写验证工具的单元测试**
 
 测试至少断言验证计划包含三个测试目录和三个 skill 校验目标：
 
@@ -227,7 +227,7 @@ def test_verification_plan_covers_all_distributions():
     assert len(plan["skill_validation"]) == 3
 ```
 
-- [ ] **Step 2：运行测试并确认失败**
+- [x] **Step 2：运行测试并确认失败**
 
 ```bash
 python3.12 -m unittest discover -s tests -p 'test_verify_project.py' -v
@@ -235,7 +235,7 @@ python3.12 -m unittest discover -s tests -p 'test_verify_project.py' -v
 
 预期：因为 `tools/verify_project.py` 尚不存在而失败。
 
-- [ ] **Step 3：实现验证计划和命令执行器**
+- [x] **Step 3：实现验证计划和命令执行器**
 
 `tools/verify_project.py` 必须提供：
 
@@ -253,7 +253,7 @@ def run_verification(root: Path, python: str, validator: Optional[Path]) -> int:
 
 `tests/test_verify_project.py` 同时覆盖一个合法 frontmatter 和缺少 `description` 的非法 frontmatter，断言本地验证器分别返回 0 和 1。
 
-- [ ] **Step 4：运行项目级验证**
+- [x] **Step 4：运行项目级验证**
 
 ```bash
 python3.12 tools/verify_project.py --python claudecode-codex-opencode/.venv/bin/python
@@ -261,11 +261,11 @@ python3.12 tools/verify_project.py --python claudecode-codex-opencode/.venv/bin/
 
 预期：三个测试套件和本地元数据验证全部通过；未提供外部 validator 时显示 `SKIP: external skill validator not configured`。
 
-- [ ] **Step 5：更新 README 的开发验证章节**
+- [x] **Step 5：更新 README 的开发验证章节**
 
 README 只保留项目级入口和常见失败定位，不复制完整测试矩阵；同时在开发章节链接本计划，保证路线图可发现。
 
-- [ ] **Step 6：提交本任务**
+- [x] **Step 6：提交本任务**
 
 ```bash
 git add tools/verify_project.py tools/validate_skill.py tests/test_verify_project.py README.md
@@ -283,7 +283,7 @@ git commit -m "build: add project verification entrypoint"
 - Modify: `README.md`
 - Synchronize: `openclaw/scripts/`, `openclaw/references/`, `hermes/scripts/`, `hermes/references/`
 
-- [ ] **Step 1：写共享文件清单测试**
+- [x] **Step 1：写共享文件清单测试**
 
 ```python
 def test_shared_files_match_canonical_distribution():
@@ -307,13 +307,13 @@ SHARED_PATHS = (
 
 Task 3 把 `requirements.txt` 替换为 `requirements-dev.txt` 时同步更新清单；Task 4 创建 `coach_storage.py` 时再把它加入清单和测试。不能预先创建空文件。
 
-- [ ] **Step 2：制造临时差异并确认 `--check` 能失败**
+- [x] **Step 2：制造临时差异并确认 `--check` 能失败**
 
 测试使用 `TemporaryDirectory` 复制最小目录，不得修改真实分发文件。
 
 预期：`find_mismatches()` 返回目标平台和相对路径。
 
-- [ ] **Step 3：实现同步工具**
+- [x] **Step 3：实现同步工具**
 
 ```python
 def find_mismatches(root: Path) -> list[str]:
@@ -334,7 +334,7 @@ python3.12 tools/sync_distributions.py --write  # 覆盖清单内共享文件
 
 同步检查实现后，把 `sync_distributions.py --check` 加入 `verify_project.py` 的默认验证计划；从此项目级验证会阻止共享文件漂移。
 
-- [ ] **Step 4：同步并验证三个分发目录**
+- [x] **Step 4：同步并验证三个分发目录**
 
 ```bash
 python3.12 tools/sync_distributions.py --write
@@ -344,7 +344,7 @@ python3.12 tools/verify_project.py --python claudecode-codex-opencode/.venv/bin/
 
 预期：`--check` 退出 0，全部现有测试通过。
 
-- [ ] **Step 5：提交本任务**
+- [x] **Step 5：提交本任务**
 
 ```bash
 git add tools/sync_distributions.py tools/verify_project.py tests/test_distribution_sync.py README.md openclaw hermes
@@ -368,7 +368,7 @@ git commit -m "build: synchronize shared skill files"
 - Modify: `README.md`
 - Synchronize shared files to `openclaw/` and `hermes/`
 
-- [ ] **Step 1：写 Python 版本失败测试**
+- [x] **Step 1：写 Python 版本失败测试**
 
 ```python
 def test_require_supported_python_rejects_python_37():
@@ -379,11 +379,11 @@ def test_require_supported_python_accepts_python_312():
     bootstrap.require_supported_python((3, 12, 0))
 ```
 
-- [ ] **Step 2：写运行依赖分离测试**
+- [x] **Step 2：写运行依赖分离测试**
 
 断言核心 `english_coach.py` 只导入标准库，并断言 `requirements-dev.txt` 包含 `PyYAML>=6.0.2`。分发目录不再声明核心运行时必须安装 PyYAML。
 
-- [ ] **Step 3：运行测试并确认失败**
+- [x] **Step 3：运行测试并确认失败**
 
 ```bash
 claudecode-codex-opencode/.venv/bin/python -m unittest discover \
@@ -392,7 +392,7 @@ claudecode-codex-opencode/.venv/bin/python -m unittest discover \
 
 预期：版本检查函数和 `requirements-dev.txt` 尚不存在。
 
-- [ ] **Step 4：实现版本保护**
+- [x] **Step 4：实现版本保护**
 
 ```python
 MIN_PYTHON = (3, 9)
@@ -408,7 +408,7 @@ def require_supported_python(version_info=None):
 
 在创建 `.venv` 之前执行检查。错误消息必须包含当前解释器路径、当前版本和 uv 修复命令。
 
-- [ ] **Step 5：调整 bootstrap 行为**
+- [x] **Step 5：调整 bootstrap 行为**
 
 - 正常运行只创建 `.venv`，执行共享的 `test_runtime_smoke.py` 和 `today --json` quick check。
 - `--dev` 才安装 `requirements-dev.txt` 并执行 YAML 元数据校验测试。
@@ -417,7 +417,7 @@ def require_supported_python(version_info=None):
 - 把同步工具中的 `requirements.txt` 清单项替换为 `requirements-dev.txt`，并删除三个分发目录中的旧文件。
 - 新建只依赖标准库的 `tests/test_runtime_smoke.py` 并加入共享文件清单；平台 metadata 测试只在 `--dev` 或 CI 中运行。
 
-- [ ] **Step 6：写清楚两条安装路径**
+- [x] **Step 6：写清楚两条安装路径**
 
 已有 Python 3.9+：
 
@@ -429,7 +429,8 @@ python3 scripts/bootstrap.py
 
 ```bash
 uv python install 3.12
-uv run --python 3.12 python scripts/bootstrap.py --python "$(uv python find 3.12)"
+PYTHON="$(uv python find 3.12)"
+"$PYTHON" scripts/bootstrap.py --python "$PYTHON"
 ```
 
 Windows PowerShell 等价命令：
@@ -437,7 +438,7 @@ Windows PowerShell 等价命令：
 ```powershell
 uv python install 3.12
 $python = uv python find 3.12
-uv run --python 3.12 python scripts/bootstrap.py --python $python
+& $python scripts/bootstrap.py --python $python
 .venv\Scripts\python.exe scripts\english_coach.py today --json
 ```
 
@@ -455,14 +456,14 @@ uv --version
 
 项目开发者使用 `python3 scripts/bootstrap.py --dev` 创建包含 PyYAML 的验证环境；普通使用者不需要开发依赖。
 
-- [ ] **Step 7：同步并验证**
+- [x] **Step 7：同步并验证**
 
 ```bash
 python3.12 tools/sync_distributions.py --write
 python3.12 tools/verify_project.py --python claudecode-codex-opencode/.venv/bin/python
 ```
 
-- [ ] **Step 8：提交本任务**
+- [x] **Step 8：提交本任务**
 
 ```bash
 git add README.md tools/sync_distributions.py claudecode-codex-opencode openclaw hermes

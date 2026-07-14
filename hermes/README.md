@@ -6,7 +6,7 @@ It keeps the same core learning system and Python utilities as the Claude Code/C
 
 ## Setup
 
-From this folder:
+Use Python 3.9 or newer. From this folder:
 
 ```bash
 python3 scripts/bootstrap.py
@@ -16,6 +16,21 @@ Use a specific Python when needed:
 
 ```bash
 python3 scripts/bootstrap.py --python /path/to/python3.12
+```
+
+Normal bootstrap installs no third-party runtime packages. For development
+metadata validation and the complete test suite, run:
+
+```bash
+python3 scripts/bootstrap.py --dev
+```
+
+If Python 3.9+ is unavailable:
+
+```bash
+uv python install 3.12
+PYTHON="$(uv python find 3.12)"
+"$PYTHON" scripts/bootstrap.py --python "$PYTHON"
 ```
 
 ## Use

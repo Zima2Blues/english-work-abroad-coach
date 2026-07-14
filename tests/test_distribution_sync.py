@@ -28,6 +28,13 @@ def create_distribution_tree(root, shared_paths):
 
 
 class DistributionSyncTests(unittest.TestCase):
+    def test_shared_paths_use_development_requirements_and_runtime_smoke_test(self):
+        sync = load_module(self, "sync_distributions_manifest", "tools/sync_distributions.py")
+
+        self.assertIn("requirements-dev.txt", sync.SHARED_PATHS)
+        self.assertIn("tests/test_runtime_smoke.py", sync.SHARED_PATHS)
+        self.assertNotIn("requirements.txt", sync.SHARED_PATHS)
+
     def test_repository_shared_files_match_canonical_distribution(self):
         sync = load_module(self, "sync_distributions", "tools/sync_distributions.py")
 

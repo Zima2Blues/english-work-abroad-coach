@@ -28,7 +28,7 @@ class HermesVersionTests(unittest.TestCase):
         self.assertEqual(hermes["displayName"], "English Work Abroad Coach")
         self.assertEqual(hermes["version"], "0.1.0")
         self.assertIn("daily-coach", hermes["tags"])
-        self.assertEqual(hermes["requires"]["anyBins"], ["python3", "python"])
+        self.assertEqual(hermes["requires"]["anyBins"], ["python3", "python", "uv"])
 
     def test_hermes_blueprint_defines_daily_reminder(self):
         hermes = read_frontmatter()["metadata"]["hermes"]
@@ -44,7 +44,7 @@ class HermesVersionTests(unittest.TestCase):
         expected = [
             "SKILL.md",
             "README.md",
-            "requirements.txt",
+            "requirements-dev.txt",
             "scripts/bootstrap.py",
             "scripts/english_coach.py",
             "scripts/reminder_runner.py",
@@ -53,6 +53,7 @@ class HermesVersionTests(unittest.TestCase):
             "references/plan-system.md",
             "data/plan.json",
             "data/progress.json",
+            "tests/test_runtime_smoke.py",
         ]
 
         for relative in expected:

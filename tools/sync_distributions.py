@@ -9,13 +9,14 @@ from pathlib import Path
 CANONICAL_DISTRIBUTION = "claudecode-codex-opencode"
 TARGET_DISTRIBUTIONS = ("openclaw", "hermes")
 SHARED_PATHS = (
-    "requirements.txt",
+    "requirements-dev.txt",
     "scripts/bootstrap.py",
     "scripts/english_coach.py",
     "scripts/reminder_runner.py",
     "references/learning-science.md",
     "references/material-sources.md",
     "references/plan-system.md",
+    "tests/test_runtime_smoke.py",
 )
 
 
