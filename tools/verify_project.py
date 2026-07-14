@@ -23,6 +23,7 @@ def build_verification_plan(root):
     sync_script = root / "tools" / "sync_distributions.py"
     sync = [[str(sync_script), "--check"]] if sync_script.is_file() else []
     return {
+        "project_tests": root / "tests",
         "tests": tests,
         "skill_validation": skill_validation,
         "sync": sync,
@@ -31,7 +32,7 @@ def build_verification_plan(root):
 
 def run_command(command, cwd):
     """Run one command and return its exit status."""
-    print("+ %s" % shlex.join([str(part) for part in command]))
+    print("+ %s" % shlex.join([str(part) for part in command]), flush=True)
     completed = subprocess.run([str(part) for part in command], cwd=str(cwd), check=False)
     return completed.returncode
 
@@ -56,6 +57,13 @@ def run_verification(root, python, validator: Optional[Path] = None):
     root = Path(root).resolve()
     python = str(python)
     plan = build_verification_plan(root)
+
+    result = run_command(
+        [python, "-m", "unittest", "discover", "-s", plan["project_tests"], "-v"],
+        cwd=root,
+    )
+    if result:
+        return result
 
     for item in plan["tests"]:
         result = run_command(

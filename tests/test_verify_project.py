@@ -24,12 +24,14 @@ class VerifyProjectTests(unittest.TestCase):
 
         plan = verify_project.build_verification_plan(ROOT)
 
+        self.assertIn("project_tests", plan)
+        self.assertEqual(plan["project_tests"], ROOT / "tests")
         self.assertEqual(
             [item["name"] for item in plan["tests"]],
             ["claudecode-codex-opencode", "openclaw", "hermes"],
         )
         self.assertEqual(len(plan["skill_validation"]), 3)
-        self.assertEqual(plan["sync"], [])
+        self.assertIn("sync", plan)
 
     def test_local_validator_accepts_valid_skill(self):
         validate_skill = load_module(self, "validate_skill", "tools/validate_skill.py")

@@ -110,6 +110,25 @@ claudecode-codex-opencode/
   tests/
 ```
 
+## Distribution Development
+
+The shared scripts, dependency manifest, and learning references in
+`claudecode-codex-opencode/` are the canonical source for all distributions.
+After changing a shared file, update OpenClaw and Hermes with:
+
+```bash
+claudecode-codex-opencode/.venv/bin/python tools/sync_distributions.py --write
+```
+
+Check for accidental platform drift without writing files:
+
+```bash
+claudecode-codex-opencode/.venv/bin/python tools/sync_distributions.py --check
+```
+
+The synchronization whitelist excludes platform `SKILL.md` files, metadata,
+tests, and runtime data.
+
 ## OpenClaw Version
 
 `openclaw/` contains the OpenClaw v1 adaptation. It keeps the same Python coach utilities and learning references, but uses an OpenClaw-specific `SKILL.md` with `metadata.openclaw` fields and tool-gating guidance.
