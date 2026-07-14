@@ -14,6 +14,71 @@ english-work-abroad-coach/
   hermes/                      # Hermes v1 adaptation
 ```
 
+## Agent Install
+
+Give one of these prompts to your agent. The agent should clone this repository, run the bootstrap script for the matching version, and install that version into the local skill directory as `english-work-abroad-coach`.
+
+Repository:
+
+```text
+https://github.com/Zima2Blues/english-work-abroad-coach.git
+```
+
+### Claude Code / Codex / opencode
+
+```text
+Install the English Work Abroad Coach skill from https://github.com/Zima2Blues/english-work-abroad-coach.git.
+
+Use the claudecode-codex-opencode version. Clone or update the repo locally, run `python3 scripts/bootstrap.py` inside `claudecode-codex-opencode/`, then install or symlink that folder as `english-work-abroad-coach` in this agent's skills directory. Verify it with `.venv/bin/python scripts/english_coach.py today`.
+```
+
+Typical install commands:
+
+```bash
+git clone https://github.com/Zima2Blues/english-work-abroad-coach.git ~/.local/share/english-work-abroad-coach
+cd ~/.local/share/english-work-abroad-coach/claudecode-codex-opencode
+python3 scripts/bootstrap.py
+
+mkdir -p ~/.codex/skills
+ln -sfn ~/.local/share/english-work-abroad-coach/claudecode-codex-opencode ~/.codex/skills/english-work-abroad-coach
+```
+
+For Claude Code, use `~/.claude/skills/english-work-abroad-coach` instead of `~/.codex/skills/english-work-abroad-coach`. For opencode, use the skill directory configured by that installation.
+
+### OpenClaw
+
+```text
+Install the English Work Abroad Coach skill from https://github.com/Zima2Blues/english-work-abroad-coach.git.
+
+Use the openclaw version. Clone or update the repo locally, run `python3 scripts/bootstrap.py` inside `openclaw/`, then install or symlink that folder as `english-work-abroad-coach` in OpenClaw's skills directory. Verify it with `.venv/bin/python scripts/english_coach.py today`.
+```
+
+### Hermes
+
+```text
+Install the English Work Abroad Coach skill from https://github.com/Zima2Blues/english-work-abroad-coach.git.
+
+Use the hermes version. Clone or update the repo locally, run `python3 scripts/bootstrap.py` inside `hermes/`, then install or symlink that folder as `english-work-abroad-coach` in `~/.hermes/skills/`. Verify it with `.venv/bin/python scripts/english_coach.py today`.
+```
+
+Typical Hermes commands:
+
+```bash
+git clone https://github.com/Zima2Blues/english-work-abroad-coach.git ~/.local/share/english-work-abroad-coach
+cd ~/.local/share/english-work-abroad-coach/hermes
+python3 scripts/bootstrap.py
+
+mkdir -p ~/.hermes/skills
+ln -sfn ~/.local/share/english-work-abroad-coach/hermes ~/.hermes/skills/english-work-abroad-coach
+```
+
+If the target machine already has a clone, update it instead of recloning:
+
+```bash
+cd ~/.local/share/english-work-abroad-coach
+git pull --ff-only
+```
+
 ## Claude Code / Codex / opencode Version
 
 `claudecode-codex-opencode/` contains the working Agent Skill for Claude Code, Codex, and opencode.
