@@ -255,15 +255,20 @@ This keeps private learning history and local environment files out of GitHub.
 
 ## Validation
 
-Run tests for the current version:
+Run every distribution test and the repository's local skill metadata validator:
 
 ```bash
-cd claudecode-codex-opencode
-PYTHONDONTWRITEBYTECODE=1 .venv/bin/python -m unittest discover -s tests -v
+claudecode-codex-opencode/.venv/bin/python tools/verify_project.py \
+  --python claudecode-codex-opencode/.venv/bin/python
 ```
 
-Validate the skill metadata with Codex's skill validator if available:
+To add an external official skill validator, pass its local path explicitly:
 
 ```bash
-.venv/bin/python /path/to/skill-creator/scripts/quick_validate.py /path/to/claudecode-codex-opencode
+claudecode-codex-opencode/.venv/bin/python tools/verify_project.py \
+  --python claudecode-codex-opencode/.venv/bin/python \
+  --validator "$SKILL_VALIDATOR"
 ```
+
+The staged engineering roadmap is in
+[`docs/plans/2026-07-14-development-optimization-plan.md`](docs/plans/2026-07-14-development-optimization-plan.md).
