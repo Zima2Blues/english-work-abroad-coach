@@ -67,6 +67,36 @@ def iso(value):
     return parse_date(value).isoformat()
 
 
+def validate_minutes(value):
+    """Return a supported session duration or raise a stable validation error."""
+    try:
+        minutes = int(value)
+    except (TypeError, ValueError):
+        raise ValueError("minutes must be 30 or 60")
+    if minutes not in (30, 60):
+        raise ValueError("minutes must be 30 or 60")
+    return minutes
+
+
+def validate_summary_days(value):
+    """Return a positive summary window length or raise a stable validation error."""
+    try:
+        days = int(value)
+    except (TypeError, ValueError):
+        raise ValueError("days must be at least 1")
+    if days < 1:
+        raise ValueError("days must be at least 1")
+    return days
+
+
+def parse_summary_days(value):
+    """Adapt the shared summary validator to argparse's user-facing error format."""
+    try:
+        return validate_summary_days(value)
+    except ValueError as error:
+        raise argparse.ArgumentTypeError(str(error))
+
+
 def data_dir(root):
     return Path(root) / "data"
 
@@ -227,7 +257,7 @@ def day_number(plan, target_date):
 
 def default_minutes(plan, target_date):
     key = "weekend_minutes" if parse_date(target_date).weekday() >= 5 else "weekday_minutes"
-    return int(plan.get(key, DEFAULT_PLAN[key]))
+    return validate_minutes(plan.get(key, DEFAULT_PLAN[key]))
 
 
 def phase_for_day(day):
@@ -241,7 +271,7 @@ def phase_for_day(day):
 
 
 def blocks_for_minutes(minutes):
-    if int(minutes) <= 30:
+    if validate_minutes(minutes) == 30:
         return [
             {"name": "Duolingo warm-up", "minutes": 5},
             {"name": "Comprehensible listening", "minutes": 8},
@@ -273,7 +303,9 @@ def generate_today_task(root, target_date=None, minutes=None, state_dir=None):
     target = parse_date(target_date or date.today())
     plan = load_plan(root, state_dir)
     weekday_key = WEEKDAY_KEYS[target.weekday()]
-    expected_minutes = int(minutes or default_minutes(plan, target))
+    expected_minutes = validate_minutes(
+        default_minutes(plan, target) if minutes is None else minutes
+    )
     day = day_number(plan, target)
     cycle_day = ((day - 1) % 50) + 1
     cycle_number = ((day - 1) // 50) + 1
@@ -284,6 +316,7 @@ def generate_today_task(root, target_date=None, minutes=None, state_dir=None):
         "cycle_50_day": cycle_day,
         "cycle_50_number": cycle_number,
         "goal_500_progress": "%s/500" % min(day, 500),
+        "goal_status": "completed" if day > 500 else "in_progress",
         "minutes": expected_minutes,
         "theme": theme,
         "phase": phase_for_day(day),
@@ -323,12 +356,28 @@ def load_checkins(root, state_dir=None):
     return store_for(state_dir).list_checkins()
 
 
+def validate_checkin_date(plan, target_date):
+    """Reject check-ins outside the plan's elapsed calendar range."""
+    target = parse_date(target_date)
+    start = parse_date(plan["start_date"])
+    if target < start:
+        raise ValueError("check-in date is before the plan start")
+    if target > date.today():
+        raise ValueError("check-in date cannot be in the future")
+    return target
+
+
 def record_checkin(root, entry, state_dir=None):
     """Normalize and atomically upsert one check-in in user storage."""
     plan = load_plan(root, state_dir)
     clean = dict(entry)
-    clean["date"] = iso(clean["date"])
-    clean["minutes"] = int(clean.get("minutes") or default_minutes(plan, parse_date(clean["date"])))
+    target = validate_checkin_date(plan, clean["date"])
+    clean["date"] = target.isoformat()
+    clean["minutes"] = validate_minutes(
+        default_minutes(plan, target)
+        if clean.get("minutes") is None
+        else clean["minutes"]
+    )
     clean["duolingo"] = bool(clean.get("duolingo", False))
     clean["expressions"] = normalize_expressions(clean.get("expressions"))
     clean["recorded_at"] = datetime.now().replace(microsecond=0).isoformat()
@@ -375,26 +424,46 @@ def current_streak(completed, start, today):
 
 def build_summary(root, today=None, days=30, state_dir=None):
     target = parse_date(today or date.today())
+    days = validate_summary_days(days)
     plan = load_plan(root, state_dir)
     start = parse_date(plan["start_date"])
-    window_start = max(start, target - timedelta(days=int(days) - 1))
+    if target < start:
+        return {
+            "date": target.isoformat(),
+            "window_days": days,
+            "plan_start_date": start.isoformat(),
+            "day_number": 0,
+            "completed_days": 0,
+            "expected_days": 0,
+            "missed_dates": [],
+            "current_streak": 0,
+            "longest_streak": 0,
+            "total_minutes": 0,
+            "completion_rate": 0.0,
+            "status": "not_started",
+        }
+
+    window_start = max(start, target - timedelta(days=days - 1))
     entries = load_checkins(root, state_dir)
     completed = {entry["date"] for entry in entries if window_start <= parse_date(entry["date"]) <= target}
     all_completed = {entry["date"] for entry in entries if start <= parse_date(entry["date"]) <= target}
     missed = [item.isoformat() for item in each_day(window_start, target) if item.isoformat() not in completed]
     total_minutes = sum(int(entry.get("minutes") or 0) for entry in entries if window_start <= parse_date(entry["date"]) <= target)
+    expected_days = len(list(each_day(window_start, target)))
+    current_day = day_number(plan, target)
     return {
         "date": target.isoformat(),
-        "window_days": int(days),
+        "window_days": days,
         "plan_start_date": start.isoformat(),
-        "day_number": day_number(plan, target),
+        "day_number": current_day,
         "completed_days": len(completed),
-        "expected_days": len(list(each_day(window_start, target))),
+        "expected_days": expected_days,
         "missed_dates": missed,
         "current_streak": current_streak(all_completed, start, target),
         "longest_streak": longest_streak(all_completed, start, target),
         "total_minutes": total_minutes,
-        "completion_rate": round((len(completed) / float(len(list(each_day(window_start, target))))) * 100, 1),
+        "completion_rate": round((len(completed) / float(expected_days)) * 100, 1),
+        "status": "completed" if current_day > 500 else "in_progress",
     }
 
 
@@ -449,7 +518,7 @@ def build_parser():
 
     checkin_parser = sub.add_parser("checkin", help="Record or replace a check-in for one date.")
     checkin_parser.add_argument("--date", required=True)
-    checkin_parser.add_argument("--minutes", type=int, required=True)
+    checkin_parser.add_argument("--minutes", type=int, choices=[30, 60], required=True)
     checkin_parser.add_argument("--theme", required=True)
     checkin_parser.add_argument("--duolingo", choices=["done", "missed"], default="done")
     checkin_parser.add_argument("--listening", default="")
@@ -460,7 +529,7 @@ def build_parser():
 
     summary_parser = sub.add_parser("summary", help="Summarize progress and missed dates.")
     summary_parser.add_argument("--date", help="YYYY-MM-DD. Defaults to today.")
-    summary_parser.add_argument("--days", type=int, default=30)
+    summary_parser.add_argument("--days", type=parse_summary_days, default=30)
     summary_parser.add_argument("--json", action="store_true")
 
     reminder_parser = sub.add_parser("reminder", help="Print today's reminder and whether check-in is missing.")
@@ -510,20 +579,24 @@ def main(argv=None):
         return 0
 
     if args.command == "checkin":
-        entry = record_checkin(
-            root,
-            {
-                "date": args.date,
-                "minutes": args.minutes,
-                "theme": args.theme,
-                "duolingo": args.duolingo == "done",
-                "listening": args.listening,
-                "speaking": args.speaking,
-                "expressions": args.expressions,
-                "reflection": args.reflection,
-            },
-            state_dir=state_dir,
-        )
+        try:
+            entry = record_checkin(
+                root,
+                {
+                    "date": args.date,
+                    "minutes": args.minutes,
+                    "theme": args.theme,
+                    "duolingo": args.duolingo == "done",
+                    "listening": args.listening,
+                    "speaking": args.speaking,
+                    "expressions": args.expressions,
+                    "reflection": args.reflection,
+                },
+                state_dir=state_dir,
+            )
+        except ValueError as error:
+            print("ERROR: %s" % error)
+            return 1
         if args.json:
             print_json(entry)
         else:

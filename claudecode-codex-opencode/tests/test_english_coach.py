@@ -4,7 +4,7 @@ import io
 import json
 import tempfile
 import unittest
-from datetime import date
+from datetime import date, timedelta
 from pathlib import Path
 
 
@@ -57,6 +57,15 @@ class EnglishCoachTests(unittest.TestCase):
             result = english_coach.main(arguments)
         return result, output.getvalue()
 
+    def assert_cli_parse_error(self, arguments, expected_message):
+        """Assert argparse rejects invalid command arguments before command handling."""
+        error = io.StringIO()
+        with contextlib.redirect_stderr(error):
+            with self.assertRaises(SystemExit) as raised:
+                english_coach.main(arguments)
+        self.assertEqual(raised.exception.code, 2)
+        self.assertIn(expected_message, error.getvalue())
+
     def test_today_uses_weekday_and_weekend_default_minutes(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp) / "skill"
@@ -77,6 +86,111 @@ class EnglishCoachTests(unittest.TestCase):
             self.assertEqual(saturday["day_number"], 6)
             self.assertEqual(saturday["minutes"], 60)
             self.assertEqual(saturday["theme"], "deep practice")
+
+    def test_summary_before_plan_start_returns_not_started(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "skill"
+            state_dir = Path(tmp) / "state"
+            write_plan(root)
+
+            summary = english_coach.build_summary(
+                root, date(2026, 7, 12), days=30, state_dir=state_dir
+            )
+
+            self.assertEqual(summary["status"], "not_started")
+            self.assertEqual(summary["expected_days"], 0)
+            self.assertEqual(summary["completion_rate"], 0.0)
+
+    def test_cli_rejects_invalid_today_minutes(self):
+        self.assert_cli_parse_error(
+            ["today", "--minutes", "45"], "invalid choice: 45"
+        )
+
+    def test_cli_rejects_invalid_checkin_minutes(self):
+        self.assert_cli_parse_error(
+            [
+                "checkin",
+                "--date",
+                "2026-07-14",
+                "--minutes",
+                "45",
+                "--theme",
+                "current work",
+            ],
+            "invalid choice: 45",
+        )
+
+    def test_library_rejects_invalid_minutes(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "skill"
+            state_dir = Path(tmp) / "state"
+            write_plan(root)
+
+            with self.assertRaisesRegex(ValueError, "^minutes must be 30 or 60$"):
+                english_coach.generate_today_task(
+                    root, date(2026, 7, 13), minutes=45, state_dir=state_dir
+                )
+            with self.assertRaisesRegex(ValueError, "^minutes must be 30 or 60$"):
+                english_coach.record_checkin(
+                    root,
+                    {
+                        "date": "2026-07-13",
+                        "minutes": 45,
+                        "theme": "professional self-introduction",
+                    },
+                    state_dir=state_dir,
+                )
+
+    def test_checkin_rejects_dates_before_plan_start_and_after_today(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "skill"
+            state_dir = Path(tmp) / "state"
+            write_plan(root)
+
+            with self.assertRaisesRegex(ValueError, "^check-in date is before the plan start$"):
+                english_coach.record_checkin(
+                    root,
+                    {"date": "2026-07-12", "minutes": 30, "theme": "pre-plan"},
+                    state_dir=state_dir,
+                )
+            with self.assertRaisesRegex(ValueError, "^check-in date cannot be in the future$"):
+                english_coach.record_checkin(
+                    root,
+                    {
+                        "date": (date.today() + timedelta(days=1)).isoformat(),
+                        "minutes": 30,
+                        "theme": "future",
+                    },
+                    state_dir=state_dir,
+                )
+
+    def test_summary_rejects_nonpositive_days(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "skill"
+            state_dir = Path(tmp) / "state"
+            write_plan(root)
+
+            with self.assertRaisesRegex(ValueError, "^days must be at least 1$"):
+                english_coach.build_summary(
+                    root, date(2026, 7, 13), days=0, state_dir=state_dir
+                )
+            self.assert_cli_parse_error(
+                ["summary", "--days", "0"], "days must be at least 1"
+            )
+
+    def test_day_501_reports_completed_goal_without_exceeding_goal_progress(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "skill"
+            state_dir = Path(tmp) / "state"
+            write_plan(root)
+
+            task = english_coach.generate_today_task(
+                root, date(2026, 7, 13) + timedelta(days=500), state_dir=state_dir
+            )
+
+            self.assertEqual(task["day_number"], 501)
+            self.assertEqual(task["goal_status"], "completed")
+            self.assertEqual(task["goal_500_progress"], "500/500")
 
     def test_checkin_records_entry_and_summary_counts_streak(self):
         with tempfile.TemporaryDirectory() as tmp:
