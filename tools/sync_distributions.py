@@ -11,6 +11,7 @@ TARGET_DISTRIBUTIONS = ("openclaw", "hermes")
 SHARED_PATHS = (
     "requirements-dev.txt",
     "scripts/bootstrap.py",
+    "scripts/coach_storage.py",
     "scripts/english_coach.py",
     "scripts/reminder_runner.py",
     "references/learning-science.md",

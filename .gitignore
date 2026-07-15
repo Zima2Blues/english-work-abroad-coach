@@ -12,3 +12,5 @@ venv/
 # Personal runtime records
 */data/checkins.jsonl
 */data/reminder.log
+coach.db
+coach.db-*

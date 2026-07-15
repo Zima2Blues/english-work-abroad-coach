@@ -2,10 +2,25 @@
 """Daily English coach utilities for plans, check-ins, and streaks."""
 
 import argparse
+import importlib.util
 import json
 import sys
 from datetime import date, datetime, timedelta
 from pathlib import Path
+
+
+def load_coach_storage():
+    """Load the sibling storage module in both script and spec-loaded contexts."""
+    script = Path(__file__).resolve().parent / "coach_storage.py"
+    spec = importlib.util.spec_from_file_location("english_coach_storage", script)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+coach_storage = load_coach_storage()
+CoachStore = coach_storage.CoachStore
+resolve_state_dir = coach_storage.resolve_state_dir
 
 
 WEEKDAY_KEYS = [
@@ -55,20 +70,13 @@ def data_dir(root):
     return Path(root) / "data"
 
 
-def plan_path(root):
-    return data_dir(root) / "plan.json"
+def default_plan_path(root):
+    return data_dir(root) / "default-plan.json"
 
 
-def checkins_path(root):
-    return data_dir(root) / "checkins.jsonl"
-
-
-def progress_path(root):
-    return data_dir(root) / "progress.json"
-
-
-def load_plan(root):
-    path = plan_path(root)
+def load_default_plan(root):
+    """Load and merge the read-only plan template bundled with the skill."""
+    path = default_plan_path(root)
     if not path.exists():
         return dict(DEFAULT_PLAN)
     with path.open("r", encoding="utf-8") as handle:
@@ -80,11 +88,19 @@ def load_plan(root):
     return merged
 
 
-def save_plan(root, plan):
-    data_dir(root).mkdir(parents=True, exist_ok=True)
-    with plan_path(root).open("w", encoding="utf-8") as handle:
-        json.dump(plan, handle, ensure_ascii=False, indent=2)
-        handle.write("\n")
+def store_for(state_dir=None):
+    """Return a store for an explicit or platform-default user state directory."""
+    return CoachStore(resolve_state_dir(explicit=state_dir))
+
+
+def load_plan(root, state_dir=None):
+    """Load the user's plan, falling back to the read-only bundled template."""
+    return store_for(state_dir).load_plan(load_default_plan(root))
+
+
+def save_plan(root, plan, state_dir=None):
+    """Save a user plan outside the read-only skill resource directory."""
+    store_for(state_dir).save_plan(plan)
 
 
 def day_number(plan, target_date):
@@ -137,9 +153,9 @@ def material_prompt(plan, theme, target_date):
     }
 
 
-def generate_today_task(root, target_date=None, minutes=None):
+def generate_today_task(root, target_date=None, minutes=None, state_dir=None):
     target = parse_date(target_date or date.today())
-    plan = load_plan(root)
+    plan = load_plan(root, state_dir)
     weekday_key = WEEKDAY_KEYS[target.weekday()]
     expected_minutes = int(minutes or default_minutes(plan, target))
     day = day_number(plan, target)
@@ -186,43 +202,28 @@ def objective_score(entry, expected_minutes):
     return min(100, score)
 
 
-def load_checkins(root):
-    path = checkins_path(root)
-    if not path.exists():
-        return []
-    entries = []
-    with path.open("r", encoding="utf-8") as handle:
-        for line in handle:
-            line = line.strip()
-            if line:
-                entries.append(json.loads(line))
-    return sorted(entries, key=lambda item: item["date"])
+def load_checkins(root, state_dir=None):
+    """Load check-ins from the user's external state database."""
+    return store_for(state_dir).list_checkins()
 
 
-def write_checkins(root, entries):
-    data_dir(root).mkdir(parents=True, exist_ok=True)
-    with checkins_path(root).open("w", encoding="utf-8") as handle:
-        for entry in sorted(entries, key=lambda item: item["date"]):
-            handle.write(json.dumps(entry, ensure_ascii=False, sort_keys=True) + "\n")
-
-
-def record_checkin(root, entry):
-    plan = load_plan(root)
+def record_checkin(root, entry, state_dir=None):
+    """Normalize and atomically upsert one check-in in user storage."""
+    plan = load_plan(root, state_dir)
     clean = dict(entry)
     clean["date"] = iso(clean["date"])
     clean["minutes"] = int(clean.get("minutes") or default_minutes(plan, parse_date(clean["date"])))
     clean["duolingo"] = bool(clean.get("duolingo", False))
     clean["expressions"] = normalize_expressions(clean.get("expressions"))
     clean["recorded_at"] = datetime.now().replace(microsecond=0).isoformat()
-    task = generate_today_task(root, parse_date(clean["date"]), clean["minutes"])
+    task = generate_today_task(
+        root, parse_date(clean["date"]), clean["minutes"], state_dir
+    )
     clean["day_number"] = task["day_number"]
     clean["cycle_50_day"] = task["cycle_50_day"]
     clean["objective_score"] = objective_score(clean, task["minutes"])
 
-    entries = [item for item in load_checkins(root) if item["date"] != clean["date"]]
-    entries.append(clean)
-    write_checkins(root, entries)
-    write_progress(root, build_summary(root, parse_date(clean["date"]), days=500))
+    store_for(state_dir).upsert_checkin(clean)
     return clean
 
 
@@ -256,12 +257,12 @@ def current_streak(completed, start, today):
     return streak
 
 
-def build_summary(root, today=None, days=30):
+def build_summary(root, today=None, days=30, state_dir=None):
     target = parse_date(today or date.today())
-    plan = load_plan(root)
+    plan = load_plan(root, state_dir)
     start = parse_date(plan["start_date"])
     window_start = max(start, target - timedelta(days=int(days) - 1))
-    entries = load_checkins(root)
+    entries = load_checkins(root, state_dir)
     completed = {entry["date"] for entry in entries if window_start <= parse_date(entry["date"]) <= target}
     all_completed = {entry["date"] for entry in entries if start <= parse_date(entry["date"]) <= target}
     missed = [item.isoformat() for item in each_day(window_start, target) if item.isoformat() not in completed]
@@ -279,15 +280,6 @@ def build_summary(root, today=None, days=30):
         "total_minutes": total_minutes,
         "completion_rate": round((len(completed) / float(len(list(each_day(window_start, target))))) * 100, 1),
     }
-
-
-def write_progress(root, summary):
-    data_dir(root).mkdir(parents=True, exist_ok=True)
-    progress = dict(summary)
-    progress["updated_at"] = datetime.now().replace(microsecond=0).isoformat()
-    with progress_path(root).open("w", encoding="utf-8") as handle:
-        json.dump(progress, handle, ensure_ascii=False, indent=2, sort_keys=True)
-        handle.write("\n")
 
 
 def print_json(value):
@@ -330,7 +322,8 @@ def skill_root_from_args(value):
 
 def build_parser():
     parser = argparse.ArgumentParser(description="Manage daily English plan, check-ins, reminders, and streaks.")
-    parser.add_argument("--root", help="Skill folder path. Defaults to this script's parent skill folder.")
+    parser.add_argument("--root", help="Read-only skill resource folder. Defaults to this script's parent skill folder.")
+    parser.add_argument("--state-dir", help="Writable user state folder. Defaults to the platform user state location.")
     sub = parser.add_subparsers(dest="command", required=True)
 
     today_parser = sub.add_parser("today", help="Generate today's task.")
@@ -367,9 +360,15 @@ def main(argv=None):
     parser = build_parser()
     args = parser.parse_args(argv)
     root = skill_root_from_args(args.root)
+    state_dir = resolve_state_dir(explicit=args.state_dir)
 
     if args.command == "today":
-        task = generate_today_task(root, parse_date(args.date) if args.date else date.today(), args.minutes)
+        task = generate_today_task(
+            root,
+            parse_date(args.date) if args.date else date.today(),
+            args.minutes,
+            state_dir,
+        )
         print_json(task) if args.json else print_task(task)
         return 0
 
@@ -386,6 +385,7 @@ def main(argv=None):
                 "expressions": args.expressions,
                 "reflection": args.reflection,
             },
+            state_dir=state_dir,
         )
         if args.json:
             print_json(entry)
@@ -394,15 +394,19 @@ def main(argv=None):
         return 0
 
     if args.command == "summary":
-        summary = build_summary(root, parse_date(args.date) if args.date else date.today(), args.days)
-        write_progress(root, summary)
+        summary = build_summary(
+            root,
+            parse_date(args.date) if args.date else date.today(),
+            args.days,
+            state_dir,
+        )
         print_json(summary) if args.json else print_summary(summary)
         return 0
 
     if args.command == "reminder":
         target = parse_date(args.date) if args.date else date.today()
-        completed = {entry["date"] for entry in load_checkins(root)}
-        task = generate_today_task(root, target)
+        completed = {entry["date"] for entry in load_checkins(root, state_dir)}
+        task = generate_today_task(root, target, state_dir=state_dir)
         result = {"date": target.isoformat(), "checked_in": target.isoformat() in completed, "task": task}
         if args.json:
             print_json(result)
@@ -414,7 +418,7 @@ def main(argv=None):
         return 0
 
     if args.command == "plan":
-        plan = load_plan(root)
+        plan = load_plan(root, state_dir)
         print_json(plan) if args.json else print(json.dumps(plan, ensure_ascii=False, indent=2, sort_keys=True))
         return 0
 

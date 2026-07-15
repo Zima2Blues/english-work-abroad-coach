@@ -18,14 +18,19 @@ def load_english_coach():
     return module
 
 
-def build_reminder_result(root, target_date=None):
+def build_reminder_result(root, target_date=None, state_dir=None):
     english_coach = load_english_coach()
     target = english_coach.parse_date(target_date or date.today())
-    completed = {entry["date"] for entry in english_coach.load_checkins(root)}
+    completed = {
+        entry["date"]
+        for entry in english_coach.load_checkins(root, state_dir=state_dir)
+    }
     return {
         "date": target.isoformat(),
         "checked_in": target.isoformat() in completed,
-        "task": english_coach.generate_today_task(root, target),
+        "task": english_coach.generate_today_task(
+            root, target, state_dir=state_dir
+        ),
     }
 
 
@@ -43,8 +48,8 @@ def build_notification(result):
     )
 
 
-def append_log(root, result, title, body):
-    log_path = Path(root) / "data" / "reminder.log"
+def append_log(state_dir, result, title, body):
+    log_path = Path(state_dir) / "reminder.log"
     log_path.parent.mkdir(parents=True, exist_ok=True)
     line = {
         "date": result["date"],
@@ -67,6 +72,7 @@ def notify(title, body):
 def build_parser():
     parser = argparse.ArgumentParser(description="Run one English Work Abroad Coach reminder.")
     parser.add_argument("--root", default=str(Path(__file__).resolve().parents[1]))
+    parser.add_argument("--state-dir", help="Writable user state folder. Defaults to the platform user state location.")
     parser.add_argument("--date", help="YYYY-MM-DD. Defaults to today.")
     parser.add_argument("--notify-completed", action="store_true", help="Also notify when already checked in.")
     parser.add_argument("--json", action="store_true")
@@ -76,9 +82,11 @@ def build_parser():
 def main(argv=None):
     args = build_parser().parse_args(argv)
     root = Path(args.root).resolve()
-    result = build_reminder_result(root, args.date)
+    english_coach = load_english_coach()
+    state_dir = english_coach.resolve_state_dir(explicit=args.state_dir)
+    result = build_reminder_result(root, args.date, state_dir)
     title, body = build_notification(result)
-    append_log(root, result, title, body)
+    append_log(state_dir, result, title, body)
     notified = False
     if not result["checked_in"] or args.notify_completed:
         notified = notify(title, body)

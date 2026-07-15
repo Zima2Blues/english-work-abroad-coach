@@ -1,4 +1,5 @@
 import importlib.util
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -12,7 +13,12 @@ spec.loader.exec_module(english_coach)
 
 class RuntimeSmokeTests(unittest.TestCase):
     def test_today_runs_with_standard_library_only(self):
-        task = english_coach.generate_today_task(ROOT, english_coach.parse_date("2026-07-14"))
+        with tempfile.TemporaryDirectory() as tmp:
+            task = english_coach.generate_today_task(
+                ROOT,
+                english_coach.parse_date("2026-07-14"),
+                state_dir=Path(tmp),
+            )
 
         self.assertEqual(task["date"], "2026-07-14")
         self.assertEqual(task["minutes"], 30)
