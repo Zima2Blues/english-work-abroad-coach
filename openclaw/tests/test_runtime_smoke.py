@@ -24,6 +24,11 @@ class RuntimeSmokeTests(unittest.TestCase):
         self.assertEqual(task["minutes"], 30)
         self.assertEqual(task["theme"], "current work")
 
+    def test_distribution_keeps_only_the_read_only_default_plan_template(self):
+        self.assertTrue((ROOT / "data" / "default-plan.json").is_file())
+        self.assertFalse((ROOT / "data" / "plan.json").exists())
+        self.assertFalse((ROOT / "data" / "progress.json").exists())
+
 
 if __name__ == "__main__":
     unittest.main()

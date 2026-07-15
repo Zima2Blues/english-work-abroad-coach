@@ -1,4 +1,5 @@
 import importlib.util
+import json
 import sqlite3
 import tempfile
 import unittest
@@ -179,6 +180,137 @@ class CoachStoreTests(unittest.TestCase):
             store.set_meta("last_reminder", "2026-07-15")
 
             self.assertEqual(store.get_meta("last_reminder"), "2026-07-15")
+
+
+class LegacyMigrationTests(unittest.TestCase):
+    def create_legacy_data(self, root, checkin_lines):
+        """Create a representative pre-SQLite skill data directory."""
+        data = root / "data"
+        data.mkdir(parents=True)
+        plan = {
+            "start_date": "2026-07-14",
+            "weekday_minutes": 30,
+            "weekend_minutes": 60,
+            "weekly_themes": {"monday": "current work"},
+        }
+        (data / "plan.json").write_text(
+            json.dumps(plan), encoding="utf-8"
+        )
+        (data / "progress.json").write_text(
+            json.dumps({"completed_days": 2}), encoding="utf-8"
+        )
+        (data / "checkins.jsonl").write_text(
+            "\n".join(checkin_lines) + "\n", encoding="utf-8"
+        )
+        (data / "reminder.log").write_text(
+            "2026-07-14: check-in missing\n", encoding="utf-8"
+        )
+        return data
+
+    def test_migration_imports_legacy_state_once_without_changing_source_files(self):
+        checkins = [
+            json.dumps({"date": "2026-07-14", "minutes": 30}),
+            json.dumps({"date": "2026-07-15", "minutes": 60}),
+        ]
+        with tempfile.TemporaryDirectory() as tmp:
+            workspace = Path(tmp)
+            legacy_root = workspace / "legacy"
+            legacy_data = self.create_legacy_data(legacy_root, checkins)
+            source_files = {
+                path.name: path.read_bytes() for path in legacy_data.iterdir()
+            }
+            store = coach_storage.CoachStore(workspace / "state")
+
+            first = coach_storage.migrate_legacy_data(store, legacy_root)
+
+            self.assertEqual(first["imported_checkins"], 2)
+            self.assertEqual(first["skipped_checkins"], 0)
+            self.assertEqual(first["invalid_lines"], [])
+            self.assertTrue(first["plan_imported"])
+            self.assertTrue(first["log_copied"])
+            self.assertTrue(first["complete"])
+            self.assertEqual(store.load_plan({}), json.loads((legacy_data / "plan.json").read_text(encoding="utf-8")))
+            self.assertEqual(
+                store.list_checkins(),
+                [
+                    {"date": "2026-07-14", "minutes": 30},
+                    {"date": "2026-07-15", "minutes": 60},
+                ],
+            )
+            self.assertEqual(
+                (workspace / "state" / "reminder.log").read_text(encoding="utf-8"),
+                "2026-07-14: check-in missing\n",
+            )
+            self.assertEqual(
+                {path.name: path.read_bytes() for path in legacy_data.iterdir()},
+                source_files,
+            )
+
+            second = coach_storage.migrate_legacy_data(store, legacy_root)
+
+            self.assertEqual(second["imported_checkins"], 0)
+            self.assertEqual(second["skipped_checkins"], 2)
+            self.assertEqual(second["invalid_lines"], [])
+            self.assertFalse(second["plan_imported"])
+            self.assertFalse(second["log_copied"])
+            self.assertTrue(second["complete"])
+            self.assertEqual(len(store.list_checkins()), 2)
+
+    def test_migration_reports_malformed_jsonl_lines_without_rewriting_legacy_data(self):
+        valid = json.dumps({"date": "2026-07-14", "minutes": 30})
+        with tempfile.TemporaryDirectory() as tmp:
+            workspace = Path(tmp)
+            legacy_root = workspace / "legacy"
+            legacy_data = self.create_legacy_data(
+                legacy_root, [valid, "{not valid json"]
+            )
+            original_checkins = (legacy_data / "checkins.jsonl").read_bytes()
+            store = coach_storage.CoachStore(workspace / "state")
+
+            result = coach_storage.migrate_legacy_data(store, legacy_root)
+
+            self.assertEqual(result["imported_checkins"], 1)
+            self.assertEqual(result["skipped_checkins"], 0)
+            self.assertEqual(result["invalid_lines"], [{"line": 2, "reason": "invalid JSON"}])
+            self.assertTrue(result["plan_imported"])
+            self.assertTrue(result["log_copied"])
+            self.assertFalse(result["complete"])
+            self.assertEqual(
+                store.list_checkins(), [{"date": "2026-07-14", "minutes": 30}]
+            )
+            self.assertEqual(
+                (legacy_data / "checkins.jsonl").read_bytes(), original_checkins
+            )
+
+    def test_migration_accepts_the_repository_legacy_plan_shape(self):
+        repository_plan = (
+            Path(__file__).resolve().parent
+            / "fixtures"
+            / "legacy-data"
+            / "plan.json"
+        )
+        with tempfile.TemporaryDirectory() as tmp:
+            workspace = Path(tmp)
+            legacy_data = workspace / "legacy" / "data"
+            legacy_data.mkdir(parents=True)
+            legacy_data.joinpath("plan.json").write_bytes(
+                repository_plan.read_bytes()
+            )
+            legacy_data.joinpath("checkins.jsonl").write_text(
+                '{"date": "2026-07-14", "minutes": 30}\n',
+                encoding="utf-8",
+            )
+            store = coach_storage.CoachStore(workspace / "state")
+
+            result = coach_storage.migrate_legacy_data(store, legacy_data)
+
+            self.assertTrue(result["complete"])
+            self.assertTrue(result["plan_imported"])
+            self.assertEqual(result["imported_checkins"], 1)
+            self.assertEqual(
+                store.load_plan({}),
+                json.loads(repository_plan.read_text(encoding="utf-8")),
+            )
 
 
 if __name__ == "__main__":

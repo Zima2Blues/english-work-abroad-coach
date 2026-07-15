@@ -54,6 +54,7 @@ DEFAULT_PLAN = {
         {"name": "BBC Learning English", "use_for": "workplace phrases"},
     ],
 }
+EXPORT_FORMAT_VERSION = 1
 
 
 def parse_date(value):
@@ -101,6 +102,121 @@ def load_plan(root, state_dir=None):
 def save_plan(root, plan, state_dir=None):
     """Save a user plan outside the read-only skill resource directory."""
     store_for(state_dir).save_plan(plan)
+
+
+def validate_plan(plan):
+    """Reject plan documents that cannot support the coach's fixed daily model."""
+    if not isinstance(plan, dict):
+        raise ValueError("plan must be a JSON object")
+    try:
+        parse_date(plan.get("start_date"))
+    except (TypeError, ValueError):
+        raise ValueError("plan start_date must use YYYY-MM-DD")
+    for key in ("weekday_minutes", "weekend_minutes"):
+        if plan.get(key) not in (30, 60):
+            raise ValueError("plan %s must be 30 or 60" % key)
+    themes = plan.get("weekly_themes")
+    if not isinstance(themes, dict) or set(themes) != set(WEEKDAY_KEYS):
+        raise ValueError("plan weekly_themes must define all seven weekdays")
+    if any(not isinstance(themes[key], str) or not themes[key].strip() for key in WEEKDAY_KEYS):
+        raise ValueError("plan weekly themes must be non-empty text")
+    sources = plan.get("material_sources")
+    if not isinstance(sources, list) or not sources:
+        raise ValueError("plan material_sources must be a non-empty list")
+    for source in sources:
+        if not isinstance(source, dict) or not str(source.get("name", "")).strip() or not str(source.get("use_for", "")).strip():
+            raise ValueError("each material source needs name and use_for")
+    return plan
+
+
+def write_json(path, payload):
+    """Write a UTF-8 JSON document, creating its parent directory if required."""
+    target = Path(path)
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_text(
+        json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
+    return target
+
+
+def export_state(root, state_dir=None):
+    """Build a portable snapshot of the effective plan and all check-ins."""
+    return {
+        "format_version": EXPORT_FORMAT_VERSION,
+        "exported_at": datetime.now().replace(microsecond=0).isoformat(),
+        "plan": load_plan(root, state_dir),
+        "checkins": load_checkins(root, state_dir),
+    }
+
+
+def export_state_to_file(root, output, state_dir=None):
+    """Write a portable state snapshot and return its output path."""
+    return write_json(output, export_state(root, state_dir))
+
+
+def _validated_import(document):
+    """Validate an import document fully before it changes user state."""
+    if not isinstance(document, dict):
+        raise ValueError("import file must be a JSON object")
+    if document.get("format_version") != EXPORT_FORMAT_VERSION:
+        raise ValueError("unsupported import format_version")
+    if not document.get("exported_at"):
+        raise ValueError("import file is missing exported_at")
+    plan = validate_plan(document.get("plan"))
+    checkins = document.get("checkins")
+    if not isinstance(checkins, list):
+        raise ValueError("import file checkins must be a list")
+    normalized = []
+    for entry in checkins:
+        if not isinstance(entry, dict) or not entry.get("date"):
+            raise ValueError("each imported check-in needs a date")
+        clean = dict(entry)
+        clean["date"] = iso(clean["date"])
+        normalized.append(clean)
+    return plan, normalized
+
+
+def import_state(root, input_path, state_dir=None, merge=False):
+    """Load one portable snapshot, refusing accidental replacement by default."""
+    with Path(input_path).open("r", encoding="utf-8") as handle:
+        plan, checkins = _validated_import(json.load(handle))
+    store = store_for(state_dir)
+    store.initialize()
+    if not merge and (store.has_saved_plan() or store.list_checkins()):
+        raise ValueError("state already contains data; rerun import with --merge")
+    store.save_plan(plan)
+    for entry in checkins:
+        store.upsert_checkin(entry)
+    return {"imported_checkins": len(checkins), "merged": bool(merge)}
+
+
+def initialize_plan(root, state_dir=None, start_date=None, force=False):
+    """Save an initial plan, backing up an existing saved plan before reset."""
+    store = store_for(state_dir)
+    store.initialize()
+    backup = None
+    if store.has_saved_plan():
+        if not force:
+            raise ValueError("state already has a plan; rerun init with --force")
+        timestamp = datetime.now().strftime("%Y%m%dT%H%M%S%f")
+        backup = export_state_to_file(
+            root,
+            store.state_dir / "backups" / ("before-init-" + timestamp + ".json"),
+            store.state_dir,
+        )
+    plan = json.loads(json.dumps(load_default_plan(root)))
+    plan["start_date"] = iso(start_date or date.today())
+    store.save_plan(validate_plan(plan))
+    return {"plan": plan, "backup": str(backup) if backup else None}
+
+
+def update_plan(root, input_path, state_dir=None):
+    """Validate and save one user-edited plan document."""
+    with Path(input_path).open("r", encoding="utf-8") as handle:
+        plan = validate_plan(json.load(handle))
+    save_plan(root, plan, state_dir)
+    return plan
 
 
 def day_number(plan, target_date):
@@ -351,8 +467,29 @@ def build_parser():
     reminder_parser.add_argument("--date", help="YYYY-MM-DD. Defaults to today.")
     reminder_parser.add_argument("--json", action="store_true")
 
+    migrate_parser = sub.add_parser("migrate", help="Copy legacy JSON and JSONL state into the user database.")
+    migrate_parser.add_argument("--legacy-root", required=True, help="Legacy skill folder or its data directory.")
+    migrate_parser.add_argument("--json", action="store_true")
+
+    export_parser = sub.add_parser("export", help="Write a portable backup of the current state.")
+    export_parser.add_argument("--output", required=True)
+
+    import_parser = sub.add_parser("import", help="Restore a portable backup into the current state.")
+    import_parser.add_argument("--input", required=True)
+    import_parser.add_argument("--merge", action="store_true", help="Allow replacing check-ins with the same date.")
+
+    init_parser = sub.add_parser("init", help="Save the bundled plan as the user's initial plan.")
+    init_parser.add_argument("--start-date", help="YYYY-MM-DD. Defaults to today.")
+    init_parser.add_argument("--force", action="store_true", help="Back up and replace an existing saved plan.")
+    init_parser.add_argument("--json", action="store_true")
+
     plan_parser = sub.add_parser("plan", help="Show the current plan JSON.")
     plan_parser.add_argument("--json", action="store_true")
+    plan_subcommands = plan_parser.add_subparsers(dest="plan_command")
+    plan_export_parser = plan_subcommands.add_parser("export", help="Write the current plan to a JSON file.")
+    plan_export_parser.add_argument("--output", required=True)
+    plan_update_parser = plan_subcommands.add_parser("update", help="Validate and save a plan JSON file.")
+    plan_update_parser.add_argument("--input", required=True)
     return parser
 
 
@@ -417,7 +554,70 @@ def main(argv=None):
                 print_task(task)
         return 0
 
+    if args.command == "migrate":
+        try:
+            result = coach_storage.migrate_legacy_data(
+                store_for(state_dir), Path(args.legacy_root)
+            )
+        except (OSError, ValueError, json.JSONDecodeError) as error:
+            print("ERROR: %s" % error)
+            return 1
+        if args.json:
+            print_json(result)
+        else:
+            print(
+                "Migrated %s check-ins; skipped %s; invalid lines: %s"
+                % (
+                    result["imported_checkins"],
+                    result["skipped_checkins"],
+                    len(result["invalid_lines"]),
+                )
+            )
+        return 0 if result["complete"] else 1
+
+    if args.command == "export":
+        output = export_state_to_file(root, args.output, state_dir)
+        print("Exported coach state to %s" % output)
+        return 0
+
+    if args.command == "import":
+        try:
+            result = import_state(root, args.input, state_dir, args.merge)
+        except (OSError, ValueError, json.JSONDecodeError) as error:
+            print("ERROR: %s" % error)
+            return 1
+        print("Imported %s check-ins" % result["imported_checkins"])
+        return 0
+
+    if args.command == "init":
+        try:
+            result = initialize_plan(
+                root, state_dir, args.start_date, args.force
+            )
+        except (OSError, ValueError, json.JSONDecodeError) as error:
+            print("ERROR: %s" % error)
+            return 1
+        if args.json:
+            print_json(result)
+        else:
+            print("Initialized plan starting %s" % result["plan"]["start_date"])
+            if result["backup"]:
+                print("Backed up existing state to %s" % result["backup"])
+        return 0
+
     if args.command == "plan":
+        if args.plan_command == "export":
+            output = write_json(args.output, load_plan(root, state_dir))
+            print("Exported plan to %s" % output)
+            return 0
+        if args.plan_command == "update":
+            try:
+                update_plan(root, args.input, state_dir)
+            except (OSError, ValueError, json.JSONDecodeError) as error:
+                print("ERROR: %s" % error)
+                return 1
+            print("Updated plan from %s" % args.input)
+            return 0
         plan = load_plan(root, state_dir)
         print_json(plan) if args.json else print(json.dumps(plan, ensure_ascii=False, indent=2, sort_keys=True))
         return 0

@@ -588,7 +588,7 @@ git commit -m "feat: move coach state to SQLite user storage"
 - Delete after migration tests pass: `hermes/data/plan.json`
 - Delete after migration tests pass: `hermes/data/progress.json`
 
-- [ ] **Step 1：写旧数据迁移测试**
+- [x] **Step 1：写旧数据迁移测试**
 
 测试夹具包含：
 
@@ -601,7 +601,7 @@ legacy/data/reminder.log
 
 断言首次迁移导入计划和签到、复制提醒日志、保留旧文件；第二次运行迁移不增加重复记录。
 
-- [ ] **Step 2：写损坏 JSONL 处理测试**
+- [x] **Step 2：写损坏 JSONL 处理测试**
 
 一行合法、一行损坏时，迁移必须：
 
@@ -610,7 +610,7 @@ legacy/data/reminder.log
 - 返回非零迁移状态。
 - 不删除或重写原文件。
 
-- [ ] **Step 3：实现迁移接口**
+- [x] **Step 3：实现迁移接口**
 
 ```python
 def migrate_legacy_data(store: CoachStore, legacy_root: Path) -> dict:
@@ -619,7 +619,7 @@ def migrate_legacy_data(store: CoachStore, legacy_root: Path) -> dict:
 
 迁移结果固定包含 `imported_checkins`、`skipped_checkins`、`invalid_lines`、`plan_imported`、`log_copied`。
 
-- [ ] **Step 4：增加 CLI 命令**
+- [x] **Step 4：增加 CLI 命令**
 
 ```bash
 python scripts/english_coach.py migrate --legacy-root ./legacy-skill-backup
@@ -629,7 +629,7 @@ python scripts/english_coach.py import --input english-coach-backup.json --merge
 
 导出文件必须包含 `format_version`、`exported_at`、`plan`、`checkins`。`--merge` 以日期为主键覆盖同日记录；不提供 `--merge` 时若数据库非空则拒绝导入。
 
-- [ ] **Step 5：增加首次初始化和计划更新命令**
+- [x] **Step 5：增加首次初始化和计划更新命令**
 
 ```bash
 python scripts/english_coach.py init --start-date 2026-07-14
@@ -642,15 +642,15 @@ python scripts/english_coach.py plan update --input my-plan.json
 
 为保持兼容，原有 `plan --json` 继续等价于显示计划；`plan export` 和 `plan update` 是可选的二级动作。
 
-- [ ] **Step 6：验证真实兼容形状**
+- [x] **Step 6：验证真实兼容形状**
 
 使用当前仓库 `data/plan.json` 和一个临时 `checkins.jsonl` 副本执行迁移测试，禁止操作真实个人记录。
 
-- [ ] **Step 7：移除分发目录中的旧运行数据模板**
+- [x] **Step 7：移除分发目录中的旧运行数据模板**
 
 迁移测试通过后，删除三个分发目录中的 `data/plan.json` 和 `data/progress.json`，保留 `data/default-plan.json`。更新平台文件完整性测试，断言发布包不再携带旧运行状态文件。
 
-- [ ] **Step 8：同步、验证并提交**
+- [x] **Step 8：同步、验证并提交**
 
 ```bash
 python3.12 tools/sync_distributions.py --write

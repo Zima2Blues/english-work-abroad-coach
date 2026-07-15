@@ -3,6 +3,7 @@
 
 import json
 import os
+import shutil
 import sqlite3
 import sys
 from datetime import datetime
@@ -15,6 +16,7 @@ WINDOWS_APPLICATION_DIR = "EnglishWorkAbroadCoach"
 DATABASE_NAME = "coach.db"
 SQLITE_TIMEOUT_SECONDS = 5.0
 BUSY_TIMEOUT_MILLISECONDS = 5000
+LEGACY_MIGRATION_META_KEY = "legacy_migration_completed"
 
 
 def resolve_state_dir(explicit=None, environ=None, platform=None, home=None) -> Path:
@@ -137,6 +139,18 @@ class CoachStore:
         finally:
             connection.close()
 
+    def has_saved_plan(self) -> bool:
+        """Return whether the user has saved a plan in this state database."""
+        self.initialize()
+        connection = self._connect()
+        try:
+            row = connection.execute(
+                "SELECT 1 FROM settings WHERE key = 'plan'"
+            ).fetchone()
+        finally:
+            connection.close()
+        return row is not None
+
     def list_checkins(self) -> list[dict]:
         """Return all check-ins ordered by ISO date."""
         self.initialize()
@@ -200,3 +214,70 @@ class CoachStore:
                 )
         finally:
             connection.close()
+
+
+def _legacy_data_dir(legacy_root: Path) -> Path:
+    """Return the data directory from a skill root or an explicit data directory."""
+    root = Path(legacy_root)
+    return root / "data" if (root / "data").is_dir() else root
+
+
+def migrate_legacy_data(store: CoachStore, legacy_root: Path) -> dict:
+    """Copy legacy state once and report imported, skipped, and invalid records."""
+    legacy_data = _legacy_data_dir(legacy_root)
+    if not legacy_data.is_dir():
+        raise FileNotFoundError(
+            "legacy data directory does not exist: %s" % legacy_data
+        )
+    result = {
+        "imported_checkins": 0,
+        "skipped_checkins": 0,
+        "invalid_lines": [],
+        "plan_imported": False,
+        "log_copied": False,
+        "complete": False,
+    }
+    store.initialize()
+
+    plan_path = legacy_data / "plan.json"
+    if plan_path.is_file() and not store.has_saved_plan():
+        with plan_path.open("r", encoding="utf-8") as handle:
+            store.save_plan(json.load(handle))
+        result["plan_imported"] = True
+
+    existing_dates = {entry["date"] for entry in store.list_checkins()}
+    checkins_path = legacy_data / "checkins.jsonl"
+    if checkins_path.is_file():
+        with checkins_path.open("r", encoding="utf-8") as handle:
+            for line_number, raw_line in enumerate(handle, start=1):
+                if not raw_line.strip():
+                    continue
+                try:
+                    entry = json.loads(raw_line)
+                except json.JSONDecodeError:
+                    result["invalid_lines"].append(
+                        {"line": line_number, "reason": "invalid JSON"}
+                    )
+                    continue
+                if not isinstance(entry, dict) or not entry.get("date"):
+                    result["invalid_lines"].append(
+                        {"line": line_number, "reason": "missing check-in date"}
+                    )
+                    continue
+                if entry["date"] in existing_dates:
+                    result["skipped_checkins"] += 1
+                    continue
+                store.upsert_checkin(entry)
+                existing_dates.add(entry["date"])
+                result["imported_checkins"] += 1
+
+    legacy_log = legacy_data / "reminder.log"
+    state_log = store.state_dir / "reminder.log"
+    if legacy_log.is_file() and not state_log.exists():
+        shutil.copyfile(str(legacy_log), str(state_log))
+        result["log_copied"] = True
+
+    result["complete"] = not result["invalid_lines"]
+    if result["complete"]:
+        store.set_meta(LEGACY_MIGRATION_META_KEY, str(Path(legacy_root).resolve()))
+    return result

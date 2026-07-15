@@ -51,8 +51,7 @@ class HermesVersionTests(unittest.TestCase):
             "references/learning-science.md",
             "references/material-sources.md",
             "references/plan-system.md",
-            "data/plan.json",
-            "data/progress.json",
+            "data/default-plan.json",
             "tests/test_runtime_smoke.py",
         ]
 
@@ -61,11 +60,15 @@ class HermesVersionTests(unittest.TestCase):
 
         self.assertFalse((ROOT / "scripts" / "install_reminder.py").exists())
 
-    def test_plan_json_identifies_hermes_version(self):
-        plan = json.loads((ROOT / "data" / "plan.json").read_text(encoding="utf-8"))
+    def test_default_plan_identifies_hermes_version_without_runtime_templates(self):
+        plan = json.loads(
+            (ROOT / "data" / "default-plan.json").read_text(encoding="utf-8")
+        )
 
         self.assertEqual(plan["distribution"], "hermes")
         self.assertEqual(plan["goals"]["goal_500_days"], "Reach work-abroad readiness through ten 50-day cycles.")
+        self.assertFalse((ROOT / "data" / "plan.json").exists())
+        self.assertFalse((ROOT / "data" / "progress.json").exists())
 
     def test_english_coach_script_imports_from_hermes_folder(self):
         script = ROOT / "scripts" / "english_coach.py"

@@ -19,6 +19,10 @@ english-work-abroad-coach/
 
 Do not copy only `SKILL.md`; the scripts, data files, references, and dependency manifest are part of the skill.
 
+The `data/` folder contains only the read-only `default-plan.json` template.
+Your plan, check-ins, backups, and reminder log are stored outside the skill
+folder, so updating or reinstalling the skill does not overwrite them.
+
 ## Bootstrap
 
 Python 3.9 or newer is required; Python 3.12 is recommended. From the skill
@@ -92,8 +96,51 @@ python3 scripts/bootstrap.py --dry-run
 After bootstrap, use:
 
 ```bash
+.venv/bin/python scripts/english_coach.py init
 .venv/bin/python scripts/english_coach.py today
 .venv/bin/python scripts/english_coach.py summary --days 30
+```
+
+## State And Backups
+
+By default, state is kept in the platform user-state directory:
+
+- Linux: `$XDG_STATE_HOME/english-work-abroad-coach`, or
+  `~/.local/state/english-work-abroad-coach`.
+- macOS: `~/Library/Application Support/EnglishWorkAbroadCoach`.
+- Windows: `%LOCALAPPDATA%/EnglishWorkAbroadCoach`.
+
+Use `--state-dir /path/to/state` for a specific location, or set
+`ENGLISH_COACH_HOME` to use the same state on all installed skill variants.
+
+To upgrade from a pre-SQLite skill copy, keep the old folder intact and run:
+
+```bash
+.venv/bin/python scripts/english_coach.py migrate \
+  --legacy-root /path/to/old/english-work-abroad-coach
+```
+
+Migration copies the old plan, check-ins, and reminder log without modifying
+the old folder. A malformed check-in line is reported with its line number and
+causes the command to return a nonzero status after the valid lines are copied.
+
+Create a portable backup before moving to another device:
+
+```bash
+.venv/bin/python scripts/english_coach.py export --output english-coach-backup.json
+.venv/bin/python scripts/english_coach.py import --input english-coach-backup.json
+```
+
+Import refuses to replace a nonempty state directory. To merge another device's
+backup, use `import --merge`; an imported check-in replaces an existing
+check-in with the same date. `init` refuses to overwrite a saved plan unless
+you add `--force`, which writes a backup under the state directory first.
+
+Export and edit a plan only through the command interface:
+
+```bash
+.venv/bin/python scripts/english_coach.py plan export --output my-plan.json
+.venv/bin/python scripts/english_coach.py plan update --input my-plan.json
 ```
 
 ## Daily Reminder
@@ -117,7 +164,9 @@ What it runs:
 .venv/bin/python scripts/reminder_runner.py --root /path/to/english-work-abroad-coach
 ```
 
-The runner appends to `data/reminder.log`. If `notify-send` is available in the user session, it also sends a desktop notification when the daily check-in is missing.
+The runner appends to `reminder.log` in the user state directory. If
+`notify-send` is available in the user session, it also sends a desktop
+notification when the daily check-in is missing.
 
 Useful commands:
 

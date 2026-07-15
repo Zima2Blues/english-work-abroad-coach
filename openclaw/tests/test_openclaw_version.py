@@ -40,19 +40,22 @@ class OpenClawVersionTests(unittest.TestCase):
             "references/learning-science.md",
             "references/material-sources.md",
             "references/plan-system.md",
-            "data/plan.json",
-            "data/progress.json",
+            "data/default-plan.json",
             "tests/test_runtime_smoke.py",
         ]
 
         for relative in expected:
             self.assertTrue((ROOT / relative).exists(), relative)
 
-    def test_plan_json_identifies_openclaw_version(self):
-        plan = json.loads((ROOT / "data" / "plan.json").read_text(encoding="utf-8"))
+    def test_default_plan_identifies_openclaw_version_without_runtime_templates(self):
+        plan = json.loads(
+            (ROOT / "data" / "default-plan.json").read_text(encoding="utf-8")
+        )
 
         self.assertEqual(plan["distribution"], "openclaw")
         self.assertEqual(plan["goals"]["goal_500_days"], "Reach work-abroad readiness through ten 50-day cycles.")
+        self.assertFalse((ROOT / "data" / "plan.json").exists())
+        self.assertFalse((ROOT / "data" / "progress.json").exists())
 
     def test_english_coach_script_imports_from_openclaw_folder(self):
         script = ROOT / "scripts" / "english_coach.py"

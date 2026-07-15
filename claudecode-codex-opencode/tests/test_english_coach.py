@@ -50,6 +50,13 @@ def write_plan(root: Path) -> None:
 
 
 class EnglishCoachTests(unittest.TestCase):
+    def run_cli(self, arguments):
+        """Run the command entrypoint and return its exit code and JSON output."""
+        output = io.StringIO()
+        with contextlib.redirect_stdout(output):
+            result = english_coach.main(arguments)
+        return result, output.getvalue()
+
     def test_today_uses_weekday_and_weekend_default_minutes(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp) / "skill"
@@ -252,6 +259,250 @@ class EnglishCoachTests(unittest.TestCase):
             self.assertEqual(current_files, original_files)
             self.assertTrue((state_dir / "coach.db").is_file())
             self.assertTrue((state_dir / "reminder.log").is_file())
+
+    def test_migrate_command_returns_nonzero_for_malformed_legacy_jsonl(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            workspace = Path(tmp)
+            root = workspace / "skill"
+            state_dir = workspace / "state"
+            legacy_root = workspace / "legacy"
+            write_plan(root)
+            legacy_data = legacy_root / "data"
+            legacy_data.mkdir(parents=True)
+            (legacy_data / "checkins.jsonl").write_text(
+                '{"date": "2026-07-14", "minutes": 30}\n{broken\n',
+                encoding="utf-8",
+            )
+
+            result, output = self.run_cli(
+                [
+                    "--root",
+                    str(root),
+                    "--state-dir",
+                    str(state_dir),
+                    "migrate",
+                    "--legacy-root",
+                    str(legacy_root),
+                    "--json",
+                ]
+            )
+
+            migration = json.loads(output)
+            self.assertEqual(result, 1)
+            self.assertEqual(migration["imported_checkins"], 1)
+            self.assertEqual(
+                migration["invalid_lines"], [{"line": 2, "reason": "invalid JSON"}]
+            )
+            self.assertFalse(migration["complete"])
+
+    def test_migrate_command_rejects_a_missing_legacy_root(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            workspace = Path(tmp)
+            root = workspace / "skill"
+            write_plan(root)
+
+            result, output = self.run_cli(
+                [
+                    "--root",
+                    str(root),
+                    "--state-dir",
+                    str(workspace / "state"),
+                    "migrate",
+                    "--legacy-root",
+                    str(workspace / "missing-legacy"),
+                ]
+            )
+
+            self.assertEqual(result, 1)
+            self.assertIn("legacy data directory does not exist", output)
+
+    def test_export_import_rejects_nonempty_state_unless_merge_overwrites_dates(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            workspace = Path(tmp)
+            root = workspace / "skill"
+            source_state = workspace / "source-state"
+            target_state = workspace / "target-state"
+            backup = workspace / "english-coach-backup.json"
+            write_plan(root)
+            source_plan = english_coach.load_default_plan(root)
+            source_plan["start_date"] = "2026-07-14"
+            english_coach.save_plan(root, source_plan, source_state)
+            english_coach.store_for(source_state).upsert_checkin(
+                {"date": "2026-07-14", "minutes": 30}
+            )
+
+            result, _ = self.run_cli(
+                [
+                    "--root",
+                    str(root),
+                    "--state-dir",
+                    str(source_state),
+                    "export",
+                    "--output",
+                    str(backup),
+                ]
+            )
+
+            self.assertEqual(result, 0)
+            exported = json.loads(backup.read_text(encoding="utf-8"))
+            self.assertEqual(exported["format_version"], 1)
+            self.assertIn("exported_at", exported)
+            self.assertEqual(exported["plan"], source_plan)
+            self.assertEqual(exported["checkins"], [{"date": "2026-07-14", "minutes": 30}])
+
+            target_plan = dict(source_plan, start_date="2026-08-01")
+            english_coach.save_plan(root, target_plan, target_state)
+            english_coach.store_for(target_state).upsert_checkin(
+                {"date": "2026-07-14", "minutes": 60}
+            )
+            result, _ = self.run_cli(
+                [
+                    "--root",
+                    str(root),
+                    "--state-dir",
+                    str(target_state),
+                    "import",
+                    "--input",
+                    str(backup),
+                ]
+            )
+
+            self.assertEqual(result, 1)
+            self.assertEqual(english_coach.load_plan(root, target_state), target_plan)
+            self.assertEqual(
+                english_coach.load_checkins(root, target_state),
+                [{"date": "2026-07-14", "minutes": 60}],
+            )
+
+            result, _ = self.run_cli(
+                [
+                    "--root",
+                    str(root),
+                    "--state-dir",
+                    str(target_state),
+                    "import",
+                    "--input",
+                    str(backup),
+                    "--merge",
+                ]
+            )
+
+            self.assertEqual(result, 0)
+            self.assertEqual(english_coach.load_plan(root, target_state), source_plan)
+            self.assertEqual(
+                english_coach.load_checkins(root, target_state),
+                [{"date": "2026-07-14", "minutes": 30}],
+            )
+
+    def test_init_and_plan_commands_protect_existing_plan_and_validate_updates(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            workspace = Path(tmp)
+            root = workspace / "skill"
+            state_dir = workspace / "state"
+            plan_file = workspace / "my-plan.json"
+            write_plan(root)
+
+            result, output = self.run_cli(
+                [
+                    "--root",
+                    str(root),
+                    "--state-dir",
+                    str(state_dir),
+                    "init",
+                    "--start-date",
+                    "2026-08-01",
+                    "--json",
+                ]
+            )
+
+            self.assertEqual(result, 0)
+            self.assertEqual(json.loads(output)["plan"]["start_date"], "2026-08-01")
+
+            result, _ = self.run_cli(
+                [
+                    "--root",
+                    str(root),
+                    "--state-dir",
+                    str(state_dir),
+                    "init",
+                ]
+            )
+            self.assertEqual(result, 1)
+
+            result, output = self.run_cli(
+                [
+                    "--root",
+                    str(root),
+                    "--state-dir",
+                    str(state_dir),
+                    "init",
+                    "--start-date",
+                    "2026-09-01",
+                    "--force",
+                    "--json",
+                ]
+            )
+
+            self.assertEqual(result, 0)
+            forced_init = json.loads(output)
+            self.assertTrue(Path(forced_init["backup"]).is_file())
+            self.assertEqual(forced_init["plan"]["start_date"], "2026-09-01")
+
+            result, _ = self.run_cli(
+                [
+                    "--root",
+                    str(root),
+                    "--state-dir",
+                    str(state_dir),
+                    "plan",
+                    "export",
+                    "--output",
+                    str(plan_file),
+                ]
+            )
+            self.assertEqual(result, 0)
+
+            invalid_plan = json.loads(plan_file.read_text(encoding="utf-8"))
+            invalid_plan["weekday_minutes"] = 45
+            plan_file.write_text(json.dumps(invalid_plan), encoding="utf-8")
+            result, _ = self.run_cli(
+                [
+                    "--root",
+                    str(root),
+                    "--state-dir",
+                    str(state_dir),
+                    "plan",
+                    "update",
+                    "--input",
+                    str(plan_file),
+                ]
+            )
+
+            self.assertEqual(result, 1)
+            self.assertEqual(
+                english_coach.load_plan(root, state_dir)["start_date"], "2026-09-01"
+            )
+
+            valid_plan = english_coach.load_plan(root, state_dir)
+            valid_plan["start_date"] = "2026-10-01"
+            plan_file.write_text(json.dumps(valid_plan), encoding="utf-8")
+            result, _ = self.run_cli(
+                [
+                    "--root",
+                    str(root),
+                    "--state-dir",
+                    str(state_dir),
+                    "plan",
+                    "update",
+                    "--input",
+                    str(plan_file),
+                ]
+            )
+
+            self.assertEqual(result, 0)
+            self.assertEqual(
+                english_coach.load_plan(root, state_dir)["start_date"], "2026-10-01"
+            )
 
 
 if __name__ == "__main__":
