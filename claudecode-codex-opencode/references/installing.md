@@ -145,10 +145,21 @@ Export and edit a plan only through the command interface:
 
 ## Daily Reminder
 
-Install a user-level systemd reminder timer:
+Check the Linux desktop prerequisites before installing a user-level systemd
+reminder timer:
 
 ```bash
-.venv/bin/python scripts/install_reminder.py --time 21:00
+.venv/bin/python scripts/english_coach.py doctor --json
+```
+
+`notify-send` is optional: when it is unavailable, reminders are still logged
+to the state directory. Install the timer with an explicit state directory when
+you do not use the platform default:
+
+```bash
+.venv/bin/python scripts/install_reminder.py \
+  --time 21:00 \
+  --state-dir /path/to/english-coach-state
 ```
 
 What it writes:
@@ -161,7 +172,9 @@ What it writes:
 What it runs:
 
 ```bash
-.venv/bin/python scripts/reminder_runner.py --root /path/to/english-work-abroad-coach
+.venv/bin/python scripts/reminder_runner.py \
+  --root /path/to/english-work-abroad-coach \
+  --state-dir /path/to/english-coach-state
 ```
 
 The runner appends to `reminder.log` in the user state directory. If

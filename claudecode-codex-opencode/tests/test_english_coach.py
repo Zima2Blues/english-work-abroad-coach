@@ -6,6 +6,7 @@ import tempfile
 import unittest
 from datetime import date, timedelta
 from pathlib import Path
+from unittest import mock
 
 
 SCRIPT = Path(__file__).resolve().parents[1] / "scripts" / "english_coach.py"
@@ -177,6 +178,82 @@ class EnglishCoachTests(unittest.TestCase):
             self.assert_cli_parse_error(
                 ["summary", "--days", "0"], "days must be at least 1"
             )
+
+    def test_doctor_reports_required_checks_and_optional_notification_warning(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "skill"
+            state_dir = Path(tmp) / "state"
+            write_plan(root)
+
+            report = english_coach.build_doctor_report(
+                root,
+                state_dir,
+                command_exists=lambda command: command == "systemctl",
+            )
+
+            self.assertEqual(
+                {
+                    key: report[key]
+                    for key in (
+                        "python_supported",
+                        "skill_root_readable",
+                        "state_dir_writable",
+                        "database_ready",
+                        "notify_send_available",
+                        "systemd_user_available",
+                    )
+                },
+                {
+                    "python_supported": True,
+                    "skill_root_readable": True,
+                    "state_dir_writable": True,
+                    "database_ready": True,
+                    "notify_send_available": False,
+                    "systemd_user_available": True,
+                },
+            )
+            self.assertEqual(english_coach.doctor_exit_code(report), 0)
+            self.assertEqual(
+                report["warnings"],
+                ["notify-send is unavailable; reminders will only be logged."],
+            )
+
+    def test_doctor_rejects_skill_root_without_search_permission(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "skill"
+            state_dir = Path(tmp) / "state"
+            write_plan(root)
+            root.chmod(0o600)
+            try:
+                report = english_coach.build_doctor_report(
+                    root,
+                    state_dir,
+                    command_exists=lambda command: True,
+                )
+            finally:
+                root.chmod(0o700)
+
+            self.assertFalse(report["skill_root_readable"])
+            self.assertEqual(english_coach.doctor_exit_code(report), 1)
+
+    def test_doctor_cli_outputs_json_and_fails_for_missing_required_check(self):
+        report = {
+            "python_supported": True,
+            "skill_root_readable": True,
+            "state_dir_writable": True,
+            "database_ready": True,
+            "notify_send_available": True,
+            "systemd_user_available": False,
+            "warnings": [],
+        }
+
+        with mock.patch.object(
+            english_coach, "build_doctor_report", return_value=report
+        ):
+            result, output = self.run_cli(["doctor", "--json"])
+
+        self.assertEqual(result, 1)
+        self.assertEqual(json.loads(output), report)
 
     def test_day_501_reports_completed_goal_without_exceeding_goal_progress(self):
         with tempfile.TemporaryDirectory() as tmp:

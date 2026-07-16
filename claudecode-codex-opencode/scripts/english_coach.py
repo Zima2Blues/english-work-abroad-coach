@@ -4,7 +4,10 @@
 import argparse
 import importlib.util
 import json
+import os
+import shutil
 import sys
+import tempfile
 from datetime import date, datetime, timedelta
 from pathlib import Path
 
@@ -122,6 +125,77 @@ def load_default_plan(root):
 def store_for(state_dir=None):
     """Return a store for an explicit or platform-default user state directory."""
     return CoachStore(resolve_state_dir(explicit=state_dir))
+
+
+DOCTOR_REQUIRED_CHECKS = (
+    "python_supported",
+    "skill_root_readable",
+    "state_dir_writable",
+    "database_ready",
+    "systemd_user_available",
+)
+
+
+def state_dir_is_writable(state_dir):
+    """Test that the state directory accepts temporary user-owned files."""
+    target = Path(state_dir)
+    try:
+        target.mkdir(parents=True, exist_ok=True)
+        with tempfile.NamedTemporaryFile(dir=str(target)):
+            pass
+    except OSError:
+        return False
+    return True
+
+
+def build_doctor_report(root, state_dir=None, command_exists=None, version_info=None):
+    """Report readiness without running systemctl or sending a notification."""
+    root = Path(root)
+    state_dir = resolve_state_dir(explicit=state_dir)
+    commands = command_exists or shutil.which
+    version = tuple(version_info or sys.version_info[:3])
+    state_writable = state_dir_is_writable(state_dir)
+    database_ready = False
+    if state_writable:
+        try:
+            CoachStore(state_dir).initialize()
+            database_ready = True
+        except (OSError, coach_storage.sqlite3.Error):
+            database_ready = False
+
+    notify_available = bool(commands("notify-send"))
+    report = {
+        "python_supported": version >= (3, 9),
+        "skill_root_readable": root.is_dir()
+        and os.access(str(root), os.R_OK | os.X_OK),
+        "state_dir_writable": state_writable,
+        "database_ready": database_ready,
+        "notify_send_available": notify_available,
+        "systemd_user_available": bool(commands("systemctl")),
+        "warnings": [],
+    }
+    if not notify_available:
+        report["warnings"].append(
+            "notify-send is unavailable; reminders will only be logged."
+        )
+    return report
+
+
+def doctor_exit_code(report):
+    """Return failure only when a required diagnostic check is not ready."""
+    return 0 if all(report[name] for name in DOCTOR_REQUIRED_CHECKS) else 1
+
+
+def print_doctor_report(report):
+    """Render the doctor report for interactive use."""
+    for name in DOCTOR_REQUIRED_CHECKS:
+        print("%s: %s" % (name, "ok" if report[name] else "failed"))
+    print(
+        "notify_send_available: %s"
+        % ("ok" if report["notify_send_available"] else "unavailable")
+    )
+    for warning in report["warnings"]:
+        print("WARNING: %s" % warning)
 
 
 def load_plan(root, state_dir=None):
@@ -536,6 +610,9 @@ def build_parser():
     reminder_parser.add_argument("--date", help="YYYY-MM-DD. Defaults to today.")
     reminder_parser.add_argument("--json", action="store_true")
 
+    doctor_parser = sub.add_parser("doctor", help="Check Python, state storage, notification, and systemd readiness.")
+    doctor_parser.add_argument("--json", action="store_true")
+
     migrate_parser = sub.add_parser("migrate", help="Copy legacy JSON and JSONL state into the user database.")
     migrate_parser.add_argument("--legacy-root", required=True, help="Legacy skill folder or its data directory.")
     migrate_parser.add_argument("--json", action="store_true")
@@ -626,6 +703,14 @@ def main(argv=None):
             if not result["checked_in"]:
                 print_task(task)
         return 0
+
+    if args.command == "doctor":
+        report = build_doctor_report(root, state_dir)
+        if args.json:
+            print_json(report)
+        else:
+            print_doctor_report(report)
+        return doctor_exit_code(report)
 
     if args.command == "migrate":
         try:

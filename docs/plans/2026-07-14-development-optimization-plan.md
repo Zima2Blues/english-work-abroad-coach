@@ -667,7 +667,7 @@ git commit -m "feat: migrate and export coach data"
 - Modify: `claudecode-codex-opencode/scripts/english_coach.py`
 - Modify: `claudecode-codex-opencode/tests/test_english_coach.py`
 
-- [ ] **Step 1：写计划开始前汇总测试**
+- [x] **Step 1：写计划开始前汇总测试**
 
 ```python
 def test_summary_before_plan_start_returns_not_started(self):
@@ -677,25 +677,25 @@ def test_summary_before_plan_start_returns_not_started(self):
     self.assertEqual(summary["completion_rate"], 0.0)
 ```
 
-- [ ] **Step 2：写时长约束测试**
+- [x] **Step 2：写时长约束测试**
 
 `today --minutes 45` 和 `checkin --minutes 45` 都必须由 argparse 返回退出码 2，错误消息包含 `invalid choice: 45`。库函数收到 45 时抛出 `ValueError("minutes must be 30 or 60")`。
 
-- [ ] **Step 3：写日期约束测试**
+- [x] **Step 3：写日期约束测试**
 
 - 计划开始前签到：拒绝。
 - 默认拒绝未来签到。
 - `summary --days 0`：拒绝。
 - 第 501 天任务：返回 `goal_status="completed"`，不显示 `501/500`。
 
-- [ ] **Step 4：运行测试并确认至少四项失败**
+- [x] **Step 4：运行测试并确认至少四项失败**
 
 ```bash
 claudecode-codex-opencode/.venv/bin/python -m unittest discover \
   -s claudecode-codex-opencode/tests -p 'test_english_coach.py' -v
 ```
 
-- [ ] **Step 5：实现集中校验函数**
+- [x] **Step 5：实现集中校验函数**
 
 ```python
 def validate_minutes(value: int) -> int:
@@ -711,11 +711,11 @@ def validate_summary_days(value: int) -> int:
 
 CLI 和库函数都调用同一校验函数，不能只依赖 argparse。
 
-- [ ] **Step 6：实现未开始和目标完成状态**
+- [x] **Step 6：实现未开始和目标完成状态**
 
 汇总返回兼容字段并新增 `status`；任务返回 `goal_status`。现有字段不删除，`goal_500_progress` 最大值保持 `500/500`。
 
-- [ ] **Step 7：同步、验证并提交**
+- [x] **Step 7：同步、验证并提交**
 
 ```bash
 python3.12 tools/sync_distributions.py --write
@@ -735,7 +735,7 @@ git commit -m "fix: validate coach dates and durations"
 - Modify: `claudecode-codex-opencode/tests/test_reminder_install.py`
 - Modify: `claudecode-codex-opencode/references/installing.md`
 
-- [ ] **Step 1：写带空格路径测试**
+- [x] **Step 1：写带空格路径测试**
 
 ```python
 def test_systemd_units_quote_paths_with_spaces(self):
@@ -746,7 +746,7 @@ def test_systemd_units_quote_paths_with_spaces(self):
 
 再覆盖 `%`、反斜杠和双引号，使用专用 `quote_systemd_value()`，不使用 shell 拼接。
 
-- [ ] **Step 2：写 doctor 输出测试**
+- [x] **Step 2：写 doctor 输出测试**
 
 `doctor --json` 必须报告：
 
@@ -763,11 +763,11 @@ def test_systemd_units_quote_paths_with_spaces(self):
 
 测试通过依赖注入模拟命令存在性，不调用真实 `systemctl` 或 `notify-send`。
 
-- [ ] **Step 3：实现 systemd 引用和 doctor 命令**
+- [x] **Step 3：实现 systemd 引用和 doctor 命令**
 
 提醒服务必须显式传递 `--state-dir`，日志写入外部状态目录。`doctor` 任一必需检查失败时退出 1；只有可选通知机制缺失时退出 0 并显示 warning。
 
-- [ ] **Step 4：运行 dry-run 集成验证**
+- [x] **Step 4：运行 dry-run 集成验证**
 
 ```bash
 claudecode-codex-opencode/.venv/bin/python claudecode-codex-opencode/scripts/install_reminder.py \
@@ -780,7 +780,7 @@ claudecode-codex-opencode/.venv/bin/python claudecode-codex-opencode/scripts/ins
 
 预期：生成的两个 unit 文件路径引用正确，不调用 `systemctl`。
 
-- [ ] **Step 5：同步、验证并提交**
+- [x] **Step 5：同步、验证并提交**
 
 ```bash
 python3.12 tools/sync_distributions.py --write
