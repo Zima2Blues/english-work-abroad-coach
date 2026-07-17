@@ -50,7 +50,7 @@ Interpretation:
 
 ## Plan Editing Rules
 
-- Keep `data/plan.json` as the source of truth.
+- Use `plan export` and `plan update` to change the saved plan in the external SQLite state directory.
 - Change one variable at a time: minutes, theme, material level, or output length.
 - Keep Duolingo at 5-10 minutes unless the user explicitly wants more.
 - If the user misses multiple days, restart with a 3-day recovery plan instead of punishment.

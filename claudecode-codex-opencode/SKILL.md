@@ -1,194 +1,85 @@
 ---
 name: english-work-abroad-coach
-description: "Use when the user wants a daily English coach for working abroad: generate or modify 30/60-minute plans, create daily English tasks or materials, review check-ins, track streaks and missed days, summarize progress, or maintain Duolingo-like 50/500-day goals."
+description: "Use when the user needs an English study plan, a daily task, check-in review, progress summary, or reminder for work-abroad preparation."
 ---
 
 # English Work Abroad Coach
 
-## Overview
+Coach daily English for overseas work readiness. Keep the routine practical for
+a full-time worker: 30 minutes on weekdays, 60 minutes on weekends, repeated
+input and output, visible streaks and missed days, and 50-day milestones within
+a 500-day goal.
 
-Act as the user's English coach for overseas work readiness. Keep daily work practical: a 30-minute weekday plan, 60-minute weekend plan, evidence-based learning loops, check-in records, streaks, missed-day visibility, and 50/500-day goals.
+## First Run
 
-This skill is written as a portable Agent Skill for Claude Code, Codex, and opencode. Use the same `SKILL.md`, `references/`, `scripts/`, and `data/` folder in each tool.
+Before running scripts on a new machine, run `python3 scripts/bootstrap.py` and then `.venv/bin/python scripts/english_coach.py doctor`; read `references/installing.md` only when setup, migration, backup, or Linux reminder details are needed.
 
-## Compatibility
+## Commands
 
-Install or symlink this folder into the agent's skill directory:
-
-| Tool | Common skill location |
-| --- | --- |
-| Claude Code | `~/.claude/skills/english-work-abroad-coach` or project `.claude/skills/english-work-abroad-coach` |
-| Codex | `~/.codex/skills/english-work-abroad-coach`, `~/.agents/skills/english-work-abroad-coach`, or project-local skills if supported |
-| opencode | use the same Agent Skills folder shape; if the local opencode install has a configured skills directory, place this folder there |
-
-If a tool cannot auto-discover the skill, invoke it by path and ask the agent to read this `SKILL.md`.
-
-## First-Time Setup
-
-On a new computer, use Python 3.9 or newer and bootstrap the skill before using
-scripts:
+Run commands from the skill folder, preferably with `.venv/bin/python`. The
+coach stores personal state in an external SQLite state directory; use
+`--state-dir /path/to/state` when the user needs an explicit shared location.
 
 ```bash
-cd /path/to/english-work-abroad-coach
-python3 scripts/bootstrap.py
+.venv/bin/python scripts/english_coach.py today --date YYYY-MM-DD
+.venv/bin/python scripts/english_coach.py checkin --date YYYY-MM-DD --minutes 30 --theme "current work" --duolingo done --listening "..." --speaking "..." --expressions "a;b;c" --reflection "..."
+.venv/bin/python scripts/english_coach.py summary --date YYYY-MM-DD --days 30
+.venv/bin/python scripts/english_coach.py reminder --date YYYY-MM-DD
 ```
 
-The normal bootstrap creates a local `.venv`, runs a standard-library smoke
-test, and does not install third-party packages. If the machine has no suitable
-Python, read `references/installing.md` for the `uv` Python 3.12 flow. For
-development validation, use `python3 scripts/bootstrap.py --dev`.
+Use `init`, `migrate`, `export`, and `import` only for state setup or transfer.
+Use `plan export` and `plan update` to change a saved plan; do not edit the
+read-only `data/default-plan.json` template.
 
-```bash
-python3 scripts/bootstrap.py --python /path/to/python3.12
-```
+## Coaching Flow
 
-Read `references/installing.md` when installing on another machine, debugging dependency problems, or wiring this skill into Claude Code, Codex, or opencode.
+### Plan
 
-To install the daily reminder on a Linux desktop with user systemd:
+Before changing schedule, themes, scoring, or goals, read
+`references/plan-system.md`. Keep plans realistic: Duolingo is a warm-up, not
+the main practice; every day includes listening, shadowing or retelling,
+output, and review.
 
-```bash
-.venv/bin/python scripts/install_reminder.py --time 21:00
-```
+### Daily Task
 
-This installs `english-work-abroad-coach.timer` under `~/.config/systemd/user/`. The timer calls `scripts/reminder_runner.py`, writes `data/reminder.log`, and uses `notify-send` when desktop notifications are available.
+Run `today` and give the selected 30/60-minute task blocks, one material
+suggestion or search target, one speaking prompt, 3-5 reusable expressions,
+and the check-in format. Read `references/material-sources.md` only when the
+user requests current sourced material. Without web access, provide a clearly
+labelled B2-level fallback passage.
 
-## Core Commands
+### Check-In
 
-Use the bundled script for deterministic plan, check-in, and streak state:
+When the user sends a check-in, extract the date, minutes, theme, listening,
+speaking or transcript, expressions, and reflection. Run `checkin`, correct
+the English concisely, score completion/time (20), listening (15), speaking
+(25), reusable expressions (20), and reflection/next action (20), then assign
+tomorrow's task. Prioritize daily output, intelligibility, and reuse over
+perfect grammar.
 
-```bash
-python3 scripts/english_coach.py today --date YYYY-MM-DD
-python3 scripts/english_coach.py today --date YYYY-MM-DD --minutes 60
-python3 scripts/english_coach.py reminder --date YYYY-MM-DD
-python3 scripts/english_coach.py summary --date YYYY-MM-DD --days 30
-python3 scripts/english_coach.py checkin --date YYYY-MM-DD --minutes 30 --theme "current work" --duolingo done --listening "..." --speaking "..." --expressions "a;b;c" --reflection "..."
-```
+### Progress
 
-Run commands from the skill folder. If running elsewhere, pass `--root /path/to/english-work-abroad-coach`.
-After bootstrap, prefer the local interpreter:
+Run `summary --days 7`, `30`, `50`, or `500` as appropriate. Report current
+and longest streaks, missed dates, completion rate, total minutes, the next
+50-day target, and one concrete adjustment for the next week.
 
-```bash
-.venv/bin/python scripts/english_coach.py today
-```
+### Reminder
 
-## Workflow
-
-### 1. Generate Or Modify A Plan
-
-Read `references/plan-system.md` before changing the plan. Store durable settings in `data/plan.json`, especially:
-
-- `start_date`
-- weekday and weekend minutes
-- weekly themes
-- 50-day cycle focus
-- material source preferences
-
-Keep plans realistic for a full-time worker: weekdays default to 30 minutes, weekends to 60 minutes. Treat Duolingo as warm-up only; the main training must include listening, shadowing or retelling, output, and review.
-
-### 2. Generate Today's Task
-
-Run:
-
-```bash
-python3 scripts/english_coach.py today --date YYYY-MM-DD
-```
-
-Then provide:
-
-- a concise task list for the selected 30/60-minute mode
-- one material suggestion or web search target
-- one speaking prompt
-- 3-5 expressions to reuse
-- the required check-in format
-
-If web access is available and the user asks for sourced materials, fetch a current material from the source strategy in `references/material-sources.md`. If not, generate a B2-level fallback passage and state that it is generated.
-
-### 3. Review A Daily Check-In
-
-When the user sends a check-in, do all of this:
-
-1. Extract date, minutes, theme, listening, speaking/transcript, expressions, and reflection.
-2. Run `scripts/english_coach.py checkin ...` to persist the objective record.
-3. Correct the English output with concise explanations.
-4. Score the day out of 100:
-   - completion and time: 20
-   - listening input: 15
-   - speaking output: 25
-   - reusable expressions: 20
-   - reflection and next action: 20
-5. Assign tomorrow's task.
-
-Do not require perfect grammar before moving forward. Prioritize daily output, intelligibility, and reuse of corrected phrases.
-
-### 4. Summarize Progress
-
-Run:
-
-```bash
-python3 scripts/english_coach.py summary --date YYYY-MM-DD --days 7
-python3 scripts/english_coach.py summary --date YYYY-MM-DD --days 30
-python3 scripts/english_coach.py summary --date YYYY-MM-DD --days 50
-python3 scripts/english_coach.py summary --date YYYY-MM-DD --days 500
-```
-
-Report:
-
-- current streak
-- longest streak
-- missed dates
-- completion rate
-- total minutes
-- next 50-day target
-- one concrete adjustment for the next week
-
-### 5. Reminder Boundary
-
-This skill can generate reminders when an agent is invoked. On Linux desktops, use `scripts/install_reminder.py` to install a user-level systemd timer. The timer runs `scripts/reminder_runner.py`, logs every reminder, and sends a desktop notification when `notify-send` is available.
-
-The skill itself cannot wake up Claude Code, Codex, or opencode while no agent session is running; systemd handles the scheduled wake-up.
+`reminder` works while an agent is invoked. For a Linux desktop systemd timer,
+first confirm `doctor` and then follow `references/installing.md` for
+`scripts/install_reminder.py`. The timer uses the external state directory;
+agents cannot wake themselves when no session is running.
 
 ## Learning Rules
 
-Read `references/learning-science.md` when changing the learning method. Preserve these constraints:
+Read `references/learning-science.md` only when changing the learning method.
+Preserve spaced and retrieval practice, comprehensible input before output,
+daily spoken or written output, and work-abroad scenarios such as introductions,
+project stories, meetings, problem solving, async updates, and interviews.
 
-- Use spaced practice and retrieval practice; review old expressions repeatedly.
-- Use comprehensible input first, then shadowing or retelling.
-- Require daily output: a recording transcript, short spoken answer, or short workplace writing.
-- Connect tasks to work-abroad scenarios: introductions, current work, project stories, meetings, problem solving, async updates, and interviews.
-- Use 50-day cycles as milestones inside the 500-day goal.
+## Check-In Format
 
-## Check-In Template
-
-Ask the user to send this format:
-
-```text
-英语打卡 Day X
-日期：
-今天用时：30/60 分钟
-今天主题：
-多邻国：完成/未完成
-听力材料：
-口语内容或转写：
-今天学到的表达：
-1.
-2.
-3.
-我想表达但不会说的是：
-复盘：
-请监督、纠错，并安排明天任务。
-```
-
-## Resources
-
-- `scripts/english_coach.py`: plan generation, check-in persistence, progress summary, reminders.
-- `scripts/bootstrap.py`: local `.venv` creation, dependency installation, and self-test bootstrap.
-- `requirements-dev.txt`: PyYAML used only for development metadata validation.
-- `scripts/install_reminder.py`: user-level systemd timer installer for daily reminders.
-- `scripts/reminder_runner.py`: one-shot reminder runner used by the timer.
-- `data/plan.json`: editable personal plan.
-- `data/progress.json`: latest computed progress snapshot.
-- `data/checkins.jsonl`: created automatically after first check-in.
-- `references/installing.md`: installation and dependency bootstrap instructions.
-- `references/learning-science.md`: scientific learning principles.
-- `references/plan-system.md`: plan, scoring, and goal design.
-- `references/material-sources.md`: material source strategy.
+Ask for date, 30/60-minute duration, theme, Duolingo status, listening
+material, speaking content or transcript, reusable expressions, an unmet
+expression, and a short reflection. Ask the user to request supervision,
+correction, and tomorrow's task.

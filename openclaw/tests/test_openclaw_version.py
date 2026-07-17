@@ -24,6 +24,9 @@ class OpenClawVersionTests(unittest.TestCase):
 
         self.assertEqual(frontmatter["name"], "english-work-abroad-coach")
         self.assertIn("OpenClaw", frontmatter["description"])
+        self.assertNotIn("openclaw", frontmatter)
+        self.assertIn("metadata", frontmatter)
+        self.assertIn("openclaw", frontmatter["metadata"])
         openclaw = frontmatter["metadata"]["openclaw"]
         self.assertEqual(openclaw["skillKey"], "english-work-abroad-coach")
         self.assertTrue(openclaw["userInvocable"])
@@ -32,7 +35,6 @@ class OpenClawVersionTests(unittest.TestCase):
     def test_openclaw_files_are_self_contained(self):
         expected = [
             "SKILL.md",
-            "README.md",
             "requirements-dev.txt",
             "scripts/bootstrap.py",
             "scripts/english_coach.py",
@@ -46,6 +48,8 @@ class OpenClawVersionTests(unittest.TestCase):
 
         for relative in expected:
             self.assertTrue((ROOT / relative).exists(), relative)
+
+        self.assertFalse((ROOT / "README.md").exists())
 
     def test_default_plan_identifies_openclaw_version_without_runtime_templates(self):
         plan = json.loads(

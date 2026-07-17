@@ -280,15 +280,14 @@ ln -s /path/to/english-work-abroad-coach/claudecode-codex-opencode ~/.codex/skil
 
 If the tool cannot auto-discover the skill, invoke it by path and ask the agent to read `SKILL.md`.
 
-## Runtime Data
+## Runtime State
 
-The repository keeps templates under each version's `data/`, but personal runtime records are ignored by git:
-
-- `*/data/checkins.jsonl`
-- `*/data/reminder.log`
-- `.venv/`
-
-This keeps private learning history and local environment files out of GitHub.
+Each distribution keeps only the read-only `data/default-plan.json` template.
+Personal plans, check-ins, progress, and reminder logs live outside the skill
+folder in the per-user SQLite state directory (`coach.db` plus reminder log).
+Use `--state-dir` or `ENGLISH_COACH_HOME` when several installed variants must
+share the same state. This keeps personal learning history out of GitHub and
+survives a skill reinstall.
 
 ## Validation
 

@@ -1,6 +1,6 @@
 ---
 name: english-work-abroad-coach
-description: "Use in Hermes when the user wants a daily English coach for working abroad: plan 30/60-minute study, generate tasks or materials, review check-ins, track streaks and missed days, summarize progress, or maintain 50/500-day goals."
+description: "Use in Hermes when the user needs an English study plan, a daily task, check-in review, progress summary, or reminder for work-abroad preparation."
 metadata:
   hermes:
     displayName: English Work Abroad Coach
@@ -28,129 +28,57 @@ metadata:
 
 # English Work Abroad Coach for Hermes
 
-## Purpose
+Coach practical daily English for overseas work readiness: 30-minute weekdays,
+60-minute weekends, visible streaks and missed days, and 50-day milestones
+within a 500-day goal.
 
-Use this Hermes skill as a daily English coach for overseas work readiness. It keeps a 30-minute weekday plan, a 60-minute weekend plan, Duolingo-style streak tracking, visible missed days, and 50/500-day goals.
+## First Run
 
-## First-Time Setup
+Before running scripts for the first time, run `python3 scripts/bootstrap.py` and then `.venv/bin/python scripts/english_coach.py doctor`; use the repository installation guide if either check needs setup help.
 
-Use Python 3.9 or newer. From this skill folder:
+## Workflow
 
-```bash
-python3 scripts/bootstrap.py
-```
+Use `.venv/bin/python scripts/english_coach.py` as the source of truth for
+state. Personal plans, check-ins, and reminders are stored in the external
+SQLite state directory, not in this skill folder.
 
-If the machine has a preferred Python:
+Read references only when the action requires them:
 
-```bash
-python3 scripts/bootstrap.py --python /path/to/python3.12
-```
+- `references/plan-system.md` before changing schedules, themes, scoring, or goals.
+- `references/material-sources.md` before selecting current sourced material.
+- `references/learning-science.md` before changing the learning method.
 
-Normal bootstrap creates a local `.venv`, runs the standard-library smoke test,
-and installs no third-party packages. Use `python3 scripts/bootstrap.py --dev`
-only for development metadata validation. If Python 3.9+ is unavailable:
-
-```bash
-uv python install 3.12
-PYTHON="$(uv python find 3.12)"
-"$PYTHON" scripts/bootstrap.py --python "$PYTHON"
-```
-
-## Hermes Usage
-
-When Hermes invokes this skill:
-
-1. Read `data/plan.json` for the current 30/60-minute plan and 50/500-day goal state.
-2. Use `scripts/english_coach.py` for deterministic task generation, check-in persistence, and progress summaries.
-3. Read `references/learning-science.md` before changing the learning method.
-4. Read `references/material-sources.md` before selecting or generating daily materials.
-5. Read `references/plan-system.md` before changing weekly themes, scoring, cycles, or goals.
-
-The `metadata.hermes.blueprint` block is the default daily automation suggestion: at 21:00 local time, Hermes can run the reminder prompt and optionally call `scripts/reminder_runner.py`. If the local Hermes installation uses a different scheduler schema, preserve the prompt and command semantics while adapting the field names.
-
-## Core Commands
-
-Run from the skill folder:
-
-```bash
-.venv/bin/python scripts/english_coach.py today
-.venv/bin/python scripts/english_coach.py reminder
-.venv/bin/python scripts/english_coach.py summary --days 30
-.venv/bin/python scripts/english_coach.py checkin --date YYYY-MM-DD --minutes 30 --theme "current work" --duolingo done --listening "..." --speaking "..." --expressions "a;b;c" --reflection "..."
-```
-
-If running from another directory, pass:
-
-```bash
---root /path/to/hermes
-```
-
-## Daily Coaching Flow
-
-### Generate A Task
-
-Use:
+## Commands
 
 ```bash
 .venv/bin/python scripts/english_coach.py today --date YYYY-MM-DD
-```
-
-Then give the user:
-
-- 30/60-minute task blocks.
-- One material source or search target.
-- One speaking prompt.
-- 3-5 reusable expressions.
-- The check-in format.
-
-If web access is available and the user asks for current materials, fetch one suitable source using `references/material-sources.md`. If web access is unavailable, generate a B2-level fallback passage and state that it is generated.
-
-### Review A Check-In
-
-When the user sends a check-in:
-
-1. Extract date, minutes, theme, listening, speaking/transcript, expressions, and reflection.
-2. Persist it with `scripts/english_coach.py checkin`.
-3. Correct the English output with concise explanations.
-4. Score the day out of 100 using `references/plan-system.md`.
-5. Assign tomorrow's task.
-
-Prioritize daily output and intelligibility over perfect grammar.
-
-### Summarize Progress
-
-Use:
-
-```bash
-.venv/bin/python scripts/english_coach.py summary --days 7
+.venv/bin/python scripts/english_coach.py checkin --date YYYY-MM-DD --minutes 30 --theme "current work" --duolingo done --listening "..." --speaking "..." --expressions "a;b;c" --reflection "..."
 .venv/bin/python scripts/english_coach.py summary --days 30
-.venv/bin/python scripts/english_coach.py summary --days 50
-.venv/bin/python scripts/english_coach.py summary --days 500
+.venv/bin/python scripts/english_coach.py reminder --date YYYY-MM-DD
 ```
 
-Report current streak, longest streak, missed dates, completion rate, total minutes, next 50-day target, and one concrete adjustment.
+Use `init`, `migrate`, `export`, `import`, `plan export`, and `plan update`
+only for state setup, transfer, or saved-plan changes. Do not edit the bundled
+`data/default-plan.json` template.
+
+## Daily Coaching
+
+For `today`, provide 30/60-minute task blocks, one material or search target,
+one speaking prompt, 3-5 reusable expressions, and a check-in request. If
+current material cannot be fetched, label the generated B2-level fallback.
+
+For a check-in, persist the date, minutes, theme, listening, speaking or
+transcript, expressions, and reflection with `checkin`; correct the English,
+score completion/time (20), listening (15), speaking (25), expressions (20),
+and reflection/next action (20), then assign tomorrow's task. Favor daily
+output and intelligibility over perfect grammar.
+
+For `summary`, report current and longest streaks, missed dates, completion
+rate, total minutes, the next 50-day target, and one weekly adjustment.
 
 ## Reminder Boundary
 
-This Hermes v1 includes `scripts/reminder_runner.py` for one-shot reminders and declares a default `metadata.hermes.blueprint` schedule. Let Hermes or the host scheduler own recurring execution. Do not install the Linux `systemd` timer from the Claude Code/Codex/opencode version in this folder.
-
-## Check-In Template
-
-Ask the user to send:
-
-```text
-英语打卡 Day X
-日期：
-今天用时：30/60 分钟
-今天主题：
-多邻国：完成/未完成
-听力材料：
-口语内容或转写：
-今天学到的表达：
-1.
-2.
-3.
-我想表达但不会说的是：
-复盘：
-请监督、纠错，并安排明天任务。
-```
+The `metadata.hermes.blueprint` default runs at 21:00 local time and may invoke
+`reminder_runner.py`. Let Hermes or the host scheduler own recurring execution.
+Do not call the Linux-only `install_reminder.py`; it is not part of this
+distribution.

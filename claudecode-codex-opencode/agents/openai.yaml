@@ -1,4 +1,4 @@
 interface:
   display_name: "English Work Abroad Coach"
   short_description: "Daily English planning and check-ins"
-  default_prompt: "Use $english-work-abroad-coach to generate today's English task, review my check-in, and update my streak."
+  default_prompt: "Use $english-work-abroad-coach to run today, record a checkin, view a summary, or generate a reminder."

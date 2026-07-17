@@ -2,6 +2,22 @@
 
 Use this when copying the skill to another computer or another agent's skill directory.
 
+## Agent And Platform Setup
+
+This reference contains installation detail that does not belong in the
+always-loaded `SKILL.md`. Keep the matching distribution folder intact when
+installing it.
+
+For Claude Code, Codex, or opencode, install or symlink
+`claudecode-codex-opencode/` as `english-work-abroad-coach` in the agent's skill
+directory. Common locations are `~/.claude/skills/`, `~/.codex/skills/`, and
+`~/.agents/skills/`; opencode uses its configured Agent Skills directory.
+
+OpenClaw and Hermes use their own distribution folders and scheduler models.
+They must not use the Linux-only `scripts/install_reminder.py` from this
+distribution. Consult the repository README for their platform-specific install
+prompts and scheduler guidance.
+
 ## Install Shape
 
 Keep the entire folder together:

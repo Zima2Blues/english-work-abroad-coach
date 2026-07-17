@@ -24,6 +24,9 @@ class HermesVersionTests(unittest.TestCase):
 
         self.assertEqual(frontmatter["name"], "english-work-abroad-coach")
         self.assertIn("Hermes", frontmatter["description"])
+        self.assertNotIn("hermes", frontmatter)
+        self.assertIn("metadata", frontmatter)
+        self.assertIn("hermes", frontmatter["metadata"])
         hermes = frontmatter["metadata"]["hermes"]
         self.assertEqual(hermes["displayName"], "English Work Abroad Coach")
         self.assertEqual(hermes["version"], "0.1.0")
@@ -43,7 +46,6 @@ class HermesVersionTests(unittest.TestCase):
     def test_hermes_files_are_self_contained(self):
         expected = [
             "SKILL.md",
-            "README.md",
             "requirements-dev.txt",
             "scripts/bootstrap.py",
             "scripts/english_coach.py",
@@ -58,6 +60,7 @@ class HermesVersionTests(unittest.TestCase):
         for relative in expected:
             self.assertTrue((ROOT / relative).exists(), relative)
 
+        self.assertFalse((ROOT / "README.md").exists())
         self.assertFalse((ROOT / "scripts" / "install_reminder.py").exists())
 
     def test_default_plan_identifies_hermes_version_without_runtime_templates(self):
