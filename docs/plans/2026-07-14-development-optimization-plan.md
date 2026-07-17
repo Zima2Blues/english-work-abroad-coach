@@ -804,7 +804,7 @@ git commit -m "fix: harden reminders and diagnostics"
 - Modify: `README.md`
 - Modify: platform metadata tests
 
-- [ ] **Step 1：增加文档结构断言**
+- [x] **Step 1：增加文档结构断言**
 
 测试必须验证：
 
@@ -814,11 +814,11 @@ git commit -m "fix: harden reminders and diagnostics"
 - Hermes 元数据仍位于 `metadata.hermes`，21:00 blueprint 保留。
 - `agents/openai.yaml` 的默认提示与当前命令名称一致。
 
-- [ ] **Step 2：精简正文并保持渐进披露**
+- [x] **Step 2：精简正文并保持渐进披露**
 
 把跨平台安装细节移到 `references/installing.md`；`SKILL.md` 保留首次运行必须检查 bootstrap/doctor 的一句入口。删除分发目录内的辅助 README，顶层 README 继续承担人类用户的项目介绍。
 
-- [ ] **Step 3：运行三个 skill validator**
+- [x] **Step 3：运行三个 skill validator**
 
 ```bash
 for distribution in claudecode-codex-opencode openclaw hermes; do
@@ -833,11 +833,11 @@ done
 
 预期：本地验证器全部退出 0，外部官方验证器对三个目录均输出 `Skill is valid!`。执行正式发布验证前，把 `SKILL_VALIDATOR` 设置为当前环境实际的 `quick_validate.py`；仓库文档不得写死维护者主目录。
 
-- [ ] **Step 4：验证触发和平台边界**
+- [x] **Step 4：验证触发和平台边界**
 
 人工运行三类提示：生成今日任务、提交签到、安装提醒。确认 Agent 只在需要时读取安装或学习科学 reference，OpenClaw/Hermes 不调用 Linux 专属安装器。
 
-- [ ] **Step 5：提交本任务**
+- [x] **Step 5：提交本任务**
 
 ```bash
 git add README.md claudecode-codex-opencode openclaw hermes
