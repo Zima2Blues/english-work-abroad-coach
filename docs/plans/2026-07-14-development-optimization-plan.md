@@ -855,7 +855,7 @@ git commit -m "docs: streamline skill instructions"
 - Modify: platform version metadata
 - Modify: `README.md`
 
-- [ ] **Step 1：写发布包测试**
+- [x] **Step 1：写发布包测试**
 
 测试必须断言每个发布 ZIP：
 
@@ -864,7 +864,7 @@ git commit -m "docs: streamline skill instructions"
 - 不包含 `.venv`、`__pycache__`、个人数据库、签到、提醒日志或测试缓存。
 - 解压后能用 Python 3.9+ 执行 `today --json`。
 
-- [ ] **Step 2：实现确定性发布构建**
+- [x] **Step 2：实现确定性发布构建**
 
 ```python
 def build_release(root: Path, distribution: str, output_dir: Path) -> Path:
@@ -873,7 +873,7 @@ def build_release(root: Path, distribution: str, output_dir: Path) -> Path:
 
 构建前必须执行 `sync_distributions.py --check` 和项目验证；失败时不生成 ZIP。
 
-- [ ] **Step 3：增加 GitHub Actions 矩阵**
+- [x] **Step 3：增加 GitHub Actions 矩阵**
 
 CI 至少覆盖：
 
@@ -886,15 +886,15 @@ strategy:
 
 每个矩阵任务执行核心测试；Ubuntu 额外执行项目内 `tools/validate_skill.py`、共享文件检查和发布包测试。外部官方 validator 作为发布前人工门执行，因为它不属于本仓库依赖。CI 不安装 systemd timer，只运行 unit/dry-run 测试。
 
-- [ ] **Step 4：统一版本**
+- [x] **Step 4：统一版本**
 
 第一个稳定化发布版本定为 `0.2.0`。OpenClaw、Hermes、发布包文件名和顶层 README 使用相同版本。Claude Code/Codex/opencode 的 `agents/openai.yaml` 若不支持版本字段，则不新增非标准字段。
 
-- [ ] **Step 5：设置公开发布门**
+- [x] **Step 5：设置公开发布门**
 
 在创建 GitHub Release 前，仓库所有者必须选择并加入明确的许可证文件。未选择许可证时 CI 可以通过，但 `build_release.py --publish-check` 必须退出 1 并报告 `LICENSE file is required for public release`。
 
-- [ ] **Step 6：本地验证并提交**
+- [x] **Step 6：本地验证并提交**
 
 ```bash
 python3.12 tools/sync_distributions.py --check
