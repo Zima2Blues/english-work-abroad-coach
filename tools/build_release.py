@@ -13,19 +13,29 @@ DISTRIBUTIONS = ("claudecode-codex-opencode", "openclaw", "hermes")
 RELEASE_VERSION = "0.2.0"
 PACKAGE_ROOT = "english-work-abroad-coach"
 ZIP_TIMESTAMP = (1980, 1, 1, 0, 0, 0)
-EXCLUDED_DIRECTORIES = {
-    ".git",
-    ".pytest_cache",
-    ".venv",
-    "__pycache__",
-    "tests",
-    "venv",
-}
-EXCLUDED_DATA_FILES = {
-    Path("data/checkins.jsonl"),
-    Path("data/plan.json"),
-    Path("data/progress.json"),
-    Path("data/reminder.log"),
+COMMON_RELEASE_FILES = frozenset(
+    {
+        "SKILL.md",
+        "data/default-plan.json",
+        "references/learning-science.md",
+        "references/material-sources.md",
+        "references/plan-system.md",
+        "requirements-dev.txt",
+        "scripts/bootstrap.py",
+        "scripts/coach_storage.py",
+        "scripts/english_coach.py",
+        "scripts/reminder_runner.py",
+    }
+)
+RELEASE_FILES = {
+    "claudecode-codex-opencode": COMMON_RELEASE_FILES
+    | {
+        "agents/openai.yaml",
+        "references/installing.md",
+        "scripts/install_reminder.py",
+    },
+    "openclaw": COMMON_RELEASE_FILES,
+    "hermes": COMMON_RELEASE_FILES,
 }
 
 
@@ -77,30 +87,20 @@ def run_preflight(root):
     return 0
 
 
-def should_package(path, source):
-    """Return whether a source file is safe to include in a public archive."""
-    relative = path.relative_to(source)
-    if any(part in EXCLUDED_DIRECTORIES for part in relative.parts):
-        return False
-    if relative in EXCLUDED_DATA_FILES:
-        return False
-
-    name = path.name
-    if name in {"coach.db", "checkins.jsonl", "reminder.log"}:
-        return False
-    if name.startswith("coach.db-"):
-        return False
-    if path.suffix.lower() in {".db", ".pyc", ".pyo", ".sqlite", ".sqlite3"}:
-        return False
-    return True
+def should_package(path, source, distribution):
+    """Return whether one declared release resource belongs in the archive."""
+    relative = path.relative_to(source).as_posix()
+    return relative in RELEASE_FILES[distribution]
 
 
-def package_files(source):
+def package_files(source, distribution):
     """Return release files in a deterministic archive order."""
     return [
         path
         for path in sorted(source.rglob("*"), key=lambda item: item.relative_to(source).as_posix())
-        if path.is_file() and not path.is_symlink() and should_package(path, source)
+        if path.is_file()
+        and not path.is_symlink()
+        and should_package(path, source, distribution)
     ]
 
 
@@ -152,7 +152,7 @@ def build_release(root: Path, distribution: str, output_dir: Path) -> Path:
             compresslevel=9,
         ) as package:
             write_directory(package, PACKAGE_ROOT + "/")
-            for path in package_files(source):
+            for path in package_files(source, distribution):
                 write_file(package, source, path)
         temporary_archive.replace(archive)
     finally:
@@ -162,7 +162,8 @@ def build_release(root: Path, distribution: str, output_dir: Path) -> Path:
 
 def publish_check(root):
     """Require an explicit repository license before a public release."""
-    if not (Path(root).resolve() / "LICENSE").is_file():
+    license_file = Path(root).resolve() / "LICENSE"
+    if not license_file.is_file() or not license_file.read_text(encoding="utf-8").strip():
         print("LICENSE file is required for public release", file=sys.stderr)
         return 1
     return 0

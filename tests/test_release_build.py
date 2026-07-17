@@ -16,6 +16,27 @@ ROOT = Path(__file__).resolve().parents[1]
 PACKAGE_ROOT = "english-work-abroad-coach"
 RELEASE_PREFLIGHT_ENV = "ENGLISH_COACH_SKIP_RELEASE_PACKAGE_TESTS"
 EXPECTED_VERSION = "0.2.0"
+EXPECTED_RELEASE_SCRIPTS = {
+    "claudecode-codex-opencode": {
+        "scripts/bootstrap.py",
+        "scripts/coach_storage.py",
+        "scripts/english_coach.py",
+        "scripts/install_reminder.py",
+        "scripts/reminder_runner.py",
+    },
+    "openclaw": {
+        "scripts/bootstrap.py",
+        "scripts/coach_storage.py",
+        "scripts/english_coach.py",
+        "scripts/reminder_runner.py",
+    },
+    "hermes": {
+        "scripts/bootstrap.py",
+        "scripts/coach_storage.py",
+        "scripts/english_coach.py",
+        "scripts/reminder_runner.py",
+    },
+}
 
 
 def load_module(test_case):
@@ -79,6 +100,18 @@ class ReleaseBuildTests(unittest.TestCase):
                             if name.startswith(PACKAGE_ROOT + "/")
                         }
                         self.assertTrue(required_paths.issubset(packaged_paths))
+                        self.assertEqual(
+                            package.read(PACKAGE_ROOT + "/SKILL.md"),
+                            (ROOT / distribution / "SKILL.md").read_bytes(),
+                        )
+                        self.assertEqual(
+                            {
+                                path
+                                for path in packaged_paths
+                                if path.startswith("scripts/")
+                            },
+                            EXPECTED_RELEASE_SCRIPTS[distribution],
+                        )
                         self.assertFalse(
                             any("/tests/" in name for name in names),
                             "release archives must not contain development test fixtures",
@@ -119,6 +152,20 @@ class ReleaseBuildTests(unittest.TestCase):
                     )
                     self.assertEqual(json.loads(completed.stdout)["minutes"], 30)
 
+    def test_release_archive_excludes_arbitrary_exported_data_backup(self):
+        release = load_module(self)
+        distribution = "openclaw"
+        backup = ROOT / distribution / "data" / "personal-backup.json"
+        backup.write_text('{"personal": "exported state"}\n', encoding="utf-8")
+        self.addCleanup(backup.unlink, missing_ok=True)
+
+        with tempfile.TemporaryDirectory() as tmp:
+            archive = release.build_release(ROOT, distribution, Path(tmp) / "dist")
+            with zipfile.ZipFile(archive) as package:
+                self.assertNotIn(
+                    PACKAGE_ROOT + "/data/personal-backup.json", package.namelist()
+                )
+
     def test_preflight_failure_does_not_create_an_archive(self):
         release = load_module(self)
 
@@ -134,6 +181,18 @@ class ReleaseBuildTests(unittest.TestCase):
         release = load_module(self)
 
         with tempfile.TemporaryDirectory() as tmp:
+            error = io.StringIO()
+            with contextlib.redirect_stderr(error):
+                result = release.main(["--root", tmp, "--publish-check"])
+
+        self.assertEqual(result, 1)
+        self.assertEqual(error.getvalue().strip(), "LICENSE file is required for public release")
+
+    def test_publish_check_rejects_a_whitespace_only_license(self):
+        release = load_module(self)
+
+        with tempfile.TemporaryDirectory() as tmp:
+            Path(tmp, "LICENSE").write_text(" \n\t", encoding="utf-8")
             error = io.StringIO()
             with contextlib.redirect_stderr(error):
                 result = release.main(["--root", tmp, "--publish-check"])
