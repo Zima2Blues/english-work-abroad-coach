@@ -4,7 +4,7 @@ description: "Use in Hermes when the user needs an English study plan, a daily t
 metadata:
   hermes:
     displayName: English Work Abroad Coach
-    version: "0.1.0"
+    version: "0.2.0"
     homepage: "https://github.com/Zima2Blues/english-work-abroad-coach"
     tags:
       - english-learning

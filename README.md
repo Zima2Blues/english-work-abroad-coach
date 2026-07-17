@@ -2,7 +2,9 @@
 
 A versioned collection of English-learning agent skills for daily study toward future overseas work.
 
-The Claude Code / Codex / opencode version is the primary tested version. OpenClaw v1 and Hermes v1 are also available as platform-specific adaptations.
+Release: 0.2.0
+
+The Claude Code / Codex / opencode version is the primary tested version. OpenClaw and Hermes are available as platform-specific 0.2.0 adaptations.
 
 ## Runtime Prerequisite
 
@@ -26,9 +28,28 @@ and Windows PowerShell commands.
 english-work-abroad-coach/
   README.md
   claudecode-codex-opencode/   # current working Agent Skill
-  openclaw/                    # OpenClaw v1 adaptation
-  hermes/                      # Hermes v1 adaptation
+  openclaw/                    # OpenClaw 0.2.0 adaptation
+  hermes/                      # Hermes 0.2.0 adaptation
 ```
+
+## Release Archives
+
+Build sanitized, self-contained archives from the repository root:
+
+```bash
+claudecode-codex-opencode/.venv/bin/python tools/build_release.py --all --output-dir dist
+```
+
+This creates `english-work-abroad-coach-0.2.0-claudecode-codex-opencode.zip`,
+`english-work-abroad-coach-0.2.0-openclaw.zip`, and
+`english-work-abroad-coach-0.2.0-hermes.zip`. Each archive unpacks to an
+`english-work-abroad-coach/` skill directory and omits virtual environments,
+caches, and personal state.
+
+Local builds do not require a license. Before creating a public GitHub Release,
+the repository owner must add an explicit license; until then,
+`tools/build_release.py --publish-check` exits with
+`LICENSE file is required for public release`.
 
 ## Agent Install
 
@@ -147,7 +168,7 @@ tests, and runtime data.
 
 ## OpenClaw Version
 
-`openclaw/` contains the OpenClaw v1 adaptation. It keeps the same Python coach utilities and learning references, but uses an OpenClaw-specific `SKILL.md` with `metadata.openclaw` fields and tool-gating guidance.
+`openclaw/` contains the OpenClaw 0.2.0 adaptation. It keeps the same Python coach utilities and learning references, but uses an OpenClaw-specific `SKILL.md` with `metadata.openclaw` fields and tool-gating guidance.
 
 OpenClaw setup:
 
@@ -166,7 +187,7 @@ The skill name inside `SKILL.md` remains `english-work-abroad-coach`. If an agen
 
 ## Hermes Version
 
-`hermes/` contains the Hermes v1 adaptation. It keeps the same Python coach utilities and learning references, but uses a Hermes-specific `SKILL.md` with `metadata.hermes` tags and a default 21:00 daily reminder blueprint.
+`hermes/` contains the Hermes 0.2.0 adaptation. It keeps the same Python coach utilities and learning references, but uses a Hermes-specific `SKILL.md` with `metadata.hermes` tags and a default 21:00 daily reminder blueprint.
 
 Hermes setup:
 

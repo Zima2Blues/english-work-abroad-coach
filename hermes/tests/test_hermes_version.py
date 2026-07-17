@@ -29,7 +29,7 @@ class HermesVersionTests(unittest.TestCase):
         self.assertIn("hermes", frontmatter["metadata"])
         hermes = frontmatter["metadata"]["hermes"]
         self.assertEqual(hermes["displayName"], "English Work Abroad Coach")
-        self.assertEqual(hermes["version"], "0.1.0")
+        self.assertEqual(hermes["version"], "0.2.0")
         self.assertIn("daily-coach", hermes["tags"])
         self.assertEqual(hermes["requires"]["anyBins"], ["python3", "python", "uv"])
 

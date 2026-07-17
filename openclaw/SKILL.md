@@ -6,7 +6,7 @@ metadata:
     skillKey: english-work-abroad-coach
     displayName: English Work Abroad Coach
     userInvocable: true
-    version: "0.1.0"
+    version: "0.2.0"
     homepage: "https://github.com/Zima2Blues/english-work-abroad-coach"
     requires:
       anyBins:

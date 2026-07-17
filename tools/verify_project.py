@@ -2,6 +2,7 @@
 """Run repository tests and skill metadata validation."""
 
 import argparse
+import os
 import shlex
 import subprocess
 import sys
@@ -30,10 +31,12 @@ def build_verification_plan(root):
     }
 
 
-def run_command(command, cwd):
+def run_command(command, cwd, env=None):
     """Run one command and return its exit status."""
     print("+ %s" % shlex.join([str(part) for part in command]), flush=True)
-    completed = subprocess.run([str(part) for part in command], cwd=str(cwd), check=False)
+    completed = subprocess.run(
+        [str(part) for part in command], cwd=str(cwd), env=env, check=False
+    )
     return completed.returncode
 
 
@@ -52,15 +55,26 @@ def run_external_validation(root, validator, python=None):
     return 0
 
 
-def run_verification(root, python, validator: Optional[Path] = None):
+def run_verification(
+    root,
+    python,
+    validator: Optional[Path] = None,
+    exclude_release_tests=False,
+):
     """Run every configured check and stop after the first failure."""
     root = Path(root).resolve()
     python = str(python)
     plan = build_verification_plan(root)
 
+    test_environment = None
+    if exclude_release_tests:
+        test_environment = os.environ.copy()
+        test_environment["ENGLISH_COACH_SKIP_RELEASE_PACKAGE_TESTS"] = "1"
+
     result = run_command(
         [python, "-m", "unittest", "discover", "-s", plan["project_tests"], "-v"],
         cwd=root,
+        env=test_environment,
     )
     if result:
         return result
@@ -92,12 +106,22 @@ def build_parser():
     parser.add_argument("--root", default=str(Path(__file__).resolve().parents[1]))
     parser.add_argument("--python", default=sys.executable)
     parser.add_argument("--validator", type=Path, help="Optional external quick_validate.py path.")
+    parser.add_argument(
+        "--exclude-release-tests",
+        action="store_true",
+        help="Exclude release-package tests only while a release build runs its preflight.",
+    )
     return parser
 
 
 def main(argv=None):
     args = build_parser().parse_args(argv)
-    return run_verification(args.root, args.python, validator=args.validator)
+    return run_verification(
+        args.root,
+        args.python,
+        validator=args.validator,
+        exclude_release_tests=args.exclude_release_tests,
+    )
 
 
 if __name__ == "__main__":

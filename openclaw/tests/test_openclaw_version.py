@@ -29,6 +29,7 @@ class OpenClawVersionTests(unittest.TestCase):
         self.assertIn("openclaw", frontmatter["metadata"])
         openclaw = frontmatter["metadata"]["openclaw"]
         self.assertEqual(openclaw["skillKey"], "english-work-abroad-coach")
+        self.assertEqual(openclaw["version"], "0.2.0")
         self.assertTrue(openclaw["userInvocable"])
         self.assertEqual(openclaw["requires"]["anyBins"], ["python3", "python", "uv"])
 

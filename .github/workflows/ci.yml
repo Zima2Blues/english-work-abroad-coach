@@ -1,0 +1,46 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    name: ${{ matrix.os }} / Python ${{ matrix.python-version }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        python-version: ["3.9", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install development test dependency
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r claudecode-codex-opencode/requirements-dev.txt
+      - name: Run core tests
+        run: |
+          python -m unittest discover -s tests -p 'test_distribution_sync.py' -v
+          python -m unittest discover -s tests -p 'test_verify_project.py' -v
+          python -m unittest discover -s claudecode-codex-opencode/tests -v
+          python -m unittest discover -s openclaw/tests -v
+          python -m unittest discover -s hermes/tests -v
+      - name: Validate local skill metadata
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          python tools/validate_skill.py claudecode-codex-opencode
+          python tools/validate_skill.py openclaw
+          python tools/validate_skill.py hermes
+      - name: Check synchronized shared files
+        if: matrix.os == 'ubuntu-latest'
+        run: python tools/sync_distributions.py --check
+      - name: Test release packages
+        if: matrix.os == 'ubuntu-latest'
+        run: python -m unittest discover -s tests -p 'test_release_build.py' -v
+      - name: External validator remains a release-owner gate
+        if: matrix.os == 'ubuntu-latest'
+        run: echo "Run the official external skill validator manually before publishing a release."

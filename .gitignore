@@ -9,6 +9,9 @@ __pycache__/
 .venv/
 venv/
 
+# Local release archives
+dist/
+
 # Personal runtime records
 */data/checkins.jsonl
 */data/reminder.log
