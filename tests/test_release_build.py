@@ -3,6 +3,7 @@ import importlib.util
 import io
 import json
 import os
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -155,12 +156,17 @@ class ReleaseBuildTests(unittest.TestCase):
     def test_release_archive_excludes_arbitrary_exported_data_backup(self):
         release = load_module(self)
         distribution = "openclaw"
-        backup = ROOT / distribution / "data" / "personal-backup.json"
-        backup.write_text('{"personal": "exported state"}\n', encoding="utf-8")
-        self.addCleanup(backup.unlink, missing_ok=True)
 
         with tempfile.TemporaryDirectory() as tmp:
-            archive = release.build_release(ROOT, distribution, Path(tmp) / "dist")
+            source_root = Path(tmp) / "source"
+            source = source_root / distribution
+            shutil.copytree(ROOT / distribution, source)
+            backup = source / "data" / "personal-backup.json"
+            backup.write_text('{"personal": "exported state"}\n', encoding="utf-8")
+
+            self.assertNotIn(backup, release.package_files(source, distribution))
+            with mock.patch.object(release, "run_preflight", return_value=0):
+                archive = release.build_release(source_root, distribution, Path(tmp) / "dist")
             with zipfile.ZipFile(archive) as package:
                 self.assertNotIn(
                     PACKAGE_ROOT + "/data/personal-backup.json", package.namelist()
