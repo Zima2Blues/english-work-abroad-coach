@@ -909,6 +909,8 @@ git commit -m "ci: validate and package all skill distributions"
 
 **目标：** 工程稳定后，再设计真正影响学习行为的 v0.3 功能，避免把行为变化混入基础设施改造。
 
+**状态：** 搁置（2026-07-20）。当前没有可用于评审的匿名化真实使用数据；不建立 v0.3 数据表、不修改现有任务生成逻辑，也不将 M6 作为 v0.2.0 的发布阻塞项。待具备至少 14 天结构化使用指标后，从 Step 1 恢复。
+
 **Files:**
 - Create after Tasks 1-9 pass: `docs/specs/adaptive-review-design.md`
 - Create after design approval: `docs/plans/adaptive-review-implementation-plan.md`
@@ -944,7 +946,7 @@ v0.3 只包含：表达复习队列、错误标签、到期复习项注入今日
 | M3 数据可靠性 | Task 4-5 | 外部 SQLite、旧数据迁移、导入导出 | 多平台共享同一用户状态 |
 | M4 正确性与提醒 | Task 6-7 | 边界修复、doctor、可靠 systemd 单元 | 日常长期使用可用 |
 | M5 分发质量 | Task 8-9 | 精简 skill、CI、0.2.0 发布包 | 可公开测试分发 |
-| M6 学习智能 | Task 10 及其后续计划 | 自适应复习设计和 v0.3 计划 | 单独批准后实施 |
+| M6 学习智能（搁置） | Task 10 及其后续计划 | 自适应复习设计和 v0.3 计划 | 取得真实使用数据并单独批准后实施 |
 
 除紧急安全修复外，不跨里程碑并行修改同一批核心文件。每个里程碑完成后运行全部验证并创建可回退的 Git 标签候选，例如 `v0.2.0-rc1`。
 
@@ -1017,7 +1019,7 @@ git status --short
 - [ ] README、SKILL.md、安装 reference 和实际命令一致。
 - [ ] Git 工作区在日常 `today/checkin/summary/reminder` 后不出现运行数据修改。
 
-M6 不作为 v0.2.0 的发布阻塞项；它必须在真实使用数据和独立设计评审后进入开发。
+M6 当前搁置，不作为 v0.2.0 的发布阻塞项；它必须在取得真实使用数据和完成独立设计评审后进入开发。
 
 ## 12. 执行纪律
 
