@@ -70,6 +70,24 @@ first confirm `doctor` and then follow `references/installing.md` for
 `scripts/install_reminder.py`. The timer uses the external state directory;
 agents cannot wake themselves when no session is running.
 
+The desktop reminder can be switched off or back on, and the timer can be removed
+cleanly. Preferences live in the user state database, so they survive a skill
+reinstall.
+
+```bash
+# Show the current reminder preference and whether the timer is installed
+.venv/bin/python scripts/english_coach.py reminders status
+
+# Stop desktop reminders without uninstalling the skill (learning data is kept)
+.venv/bin/python scripts/english_coach.py reminders off
+
+# Re-enable them
+.venv/bin/python scripts/english_coach.py reminders on
+
+# Uninstall: stop the timer and remove its systemd unit files (learning data is kept)
+.venv/bin/python scripts/install_reminder.py --uninstall
+```
+
 ## Learning Rules
 
 Read `references/learning-science.md` only when changing the learning method.

@@ -202,8 +202,28 @@ Useful commands:
 ```bash
 systemctl --user status english-work-abroad-coach.timer
 systemctl --user list-timers english-work-abroad-coach.timer
-systemctl --user disable --now english-work-abroad-coach.timer
 ```
+
+To stop desktop reminders without uninstalling the skill, turn the reminder
+preference off. The runner keeps logging but no longer shows a desktop
+pop-up, and the preference survives a skill reinstall:
+
+```bash
+.venv/bin/python scripts/english_coach.py reminders off
+.venv/bin/python scripts/english_coach.py reminders status
+```
+
+Re-enable with `reminders on`. To fully stop and remove the installed timer,
+for example after deleting the skill folder, use `--uninstall`. It stops the
+timer, removes the `.service` and `.timer` unit files, and reloads systemd so
+no reminder keeps firing:
+
+```bash
+.venv/bin/python scripts/install_reminder.py --uninstall
+```
+
+Uninstalling the timer never touches the user state database, so your plan,
+check-ins, and progress remain available after reinstalling the skill.
 
 ## Current Dependencies
 

@@ -1,6 +1,7 @@
 import contextlib
 import importlib.util
 import io
+import json
 import tempfile
 import unittest
 from pathlib import Path
@@ -128,6 +129,105 @@ class ReminderInstallerTests(unittest.TestCase):
         self.assertIn("Day 1", body)
         self.assertIn("30 min", body)
         self.assertIn("professional self-introduction", body)
+
+
+class ReminderUninstallTests(unittest.TestCase):
+    def _write_units(self, systemd_dir):
+        paths = install_reminder.unit_paths(systemd_dir)
+        paths["service"].parent.mkdir(parents=True, exist_ok=True)
+        paths["service"].write_text("[Unit]\nDescription=test\n", encoding="utf-8")
+        paths["timer"].write_text("[Unit]\nDescription=test\n", encoding="utf-8")
+        return paths
+
+    def test_uninstall_disables_removes_units_and_reloads_daemon(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            systemd_dir = Path(tmp) / "systemd"
+            unit_names = self._write_units(systemd_dir)
+            state_dir = Path(tmp) / "state"
+            state_dir.mkdir()
+            marker = state_dir / "coach.db"
+            marker.write_text("keep", encoding="utf-8")
+
+            with mock.patch.object(install_reminder.subprocess, "run") as run:
+                removed = install_reminder.uninstall(
+                    Path(tmp), systemd_user_dir=systemd_dir
+                )
+
+            commands = [call.args[0] for call in run.call_args_list]
+            self.assertIn(
+                ["systemctl", "--user", "disable", "--now",
+                 "english-work-abroad-coach.timer"],
+                commands,
+            )
+            self.assertIn(["systemctl", "--user", "daemon-reload"], commands)
+            self.assertEqual(removed, sorted(unit_names.values()))
+            self.assertFalse(unit_names["service"].exists())
+            self.assertFalse(unit_names["timer"].exists())
+            self.assertEqual(marker.read_text(encoding="utf-8"), "keep")
+
+    def test_uninstall_dry_run_keeps_units_and_does_not_call_systemctl(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            systemd_dir = Path(tmp) / "systemd"
+            unit_names = self._write_units(systemd_dir)
+            output = io.StringIO()
+
+            with mock.patch.object(install_reminder.subprocess, "run") as run:
+                with contextlib.redirect_stdout(output):
+                    result = install_reminder.main(
+                        ["--uninstall", "--dry-run",
+                         "--systemd-user-dir", str(systemd_dir)]
+                    )
+
+            self.assertEqual(result, 0)
+            run.assert_not_called()
+            self.assertTrue(unit_names["service"].exists())
+            self.assertTrue(unit_names["timer"].exists())
+
+    def test_uninstall_tolerates_missing_unit_files(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            systemd_dir = Path(tmp) / "systemd"
+            with mock.patch.object(install_reminder.subprocess, "run"):
+                removed = install_reminder.uninstall(
+                    Path(tmp), systemd_user_dir=systemd_dir
+                )
+            self.assertEqual(removed, [])
+
+
+class ReminderRunnerDisabledTests(unittest.TestCase):
+    def test_runner_skips_notification_when_reminders_disabled(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            state_dir = Path(tmp) / "state"
+            english_coach = reminder_runner.load_english_coach()
+            english_coach.store_for(state_dir).set_reminders_enabled(False)
+            output = io.StringIO()
+
+            with mock.patch.object(reminder_runner, "notify") as notify:
+                with contextlib.redirect_stdout(output):
+                    reminder_runner.main(
+                        [
+                            "--root",
+                            str(ROOT),
+                            "--state-dir",
+                            str(state_dir),
+                            "--date",
+                            "2026-07-13",
+                            "--json",
+                        ]
+                    )
+
+            payload = json.loads(output.getvalue())
+            notify.assert_not_called()
+            self.assertFalse(payload["notification"]["sent"])
+            self.assertTrue(payload["notification"]["disabled"])
+            log_lines = (state_dir / "reminder.log").read_text(
+                encoding="utf-8"
+            ).splitlines()
+            self.assertTrue(
+                any(
+                    json.loads(line)["reason"] == "disabled"
+                    for line in log_lines
+                )
+            )
 
 
 if __name__ == "__main__":

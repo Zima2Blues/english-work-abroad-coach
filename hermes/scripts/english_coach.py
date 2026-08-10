@@ -629,6 +629,16 @@ def build_parser():
     init_parser.add_argument("--force", action="store_true", help="Back up and replace an existing saved plan.")
     init_parser.add_argument("--json", action="store_true")
 
+    remainder_parser = sub.add_parser("reminders", help="Show or change the reminder preference.")
+    remainder_parser.add_argument(
+        "reminder_action",
+        nargs="?",
+        choices=["on", "off", "status"],
+        default="status",
+        help="Turn reminders off, back on, or show the current state. Default: status.",
+    )
+    remainder_parser.add_argument("--json", action="store_true")
+
     plan_parser = sub.add_parser("plan", help="Show the current plan JSON.")
     plan_parser.add_argument("--json", action="store_true")
     plan_subcommands = plan_parser.add_subparsers(dest="plan_command")
@@ -637,6 +647,29 @@ def build_parser():
     plan_update_parser = plan_subcommands.add_parser("update", help="Validate and save a plan JSON file.")
     plan_update_parser.add_argument("--input", required=True)
     return parser
+
+
+def cmd_reminders(store, args):
+    """Show or change the desktop reminder preference."""
+    if args.reminder_action == "off":
+        store.set_reminders_enabled(False)
+    elif args.reminder_action == "on":
+        store.set_reminders_enabled(True)
+    timer_active = Path(os.path.expanduser("~")) / ".config" / "systemd" / "user" / "english-work-abroad-coach.timer"
+    payload = {
+        "enabled": store.reminders_enabled(),
+        "systemd_timer_installed": timer_active.exists(),
+    }
+    if args.json:
+        print_json(payload)
+    else:
+        state = "on" if payload["enabled"] else "off"
+        print("Reminders: %s" % state)
+        if payload["systemd_timer_installed"]:
+            print("systemd timer installed: yes (use scripts/install_reminder.py --uninstall to remove)")
+        else:
+            print("systemd timer installed: no")
+    return 0
 
 
 def main(argv=None):
@@ -703,6 +736,9 @@ def main(argv=None):
             if not result["checked_in"]:
                 print_task(task)
         return 0
+
+    if args.command == "reminders":
+        return cmd_reminders(store_for(state_dir), args)
 
     if args.command == "doctor":
         report = build_doctor_report(root, state_dir)

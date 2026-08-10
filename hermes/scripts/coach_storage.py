@@ -215,6 +215,47 @@ class CoachStore:
         finally:
             connection.close()
 
+    def get_setting(self, key: str, default=None):
+        """Return one settings value as JSON, or ``default`` when it is absent."""
+        self.initialize()
+        connection = self._connect()
+        try:
+            row = connection.execute(
+                "SELECT value_json FROM settings WHERE key = ?", (key,)
+            ).fetchone()
+        finally:
+            connection.close()
+        return json.loads(row[0]) if row else default
+
+    def set_setting(self, key: str, value) -> None:
+        """Atomically insert or replace one settings value as JSON."""
+        self.initialize()
+        serialized = json.dumps(value, ensure_ascii=False, sort_keys=True)
+        updated_at = datetime.now().replace(microsecond=0).isoformat()
+        connection = self._connect()
+        try:
+            with connection:
+                connection.execute(
+                    """
+                    INSERT INTO settings (key, value_json, updated_at)
+                    VALUES (?, ?, ?)
+                    ON CONFLICT(key) DO UPDATE SET
+                        value_json = excluded.value_json,
+                        updated_at = excluded.updated_at
+                    """,
+                    (key, serialized, updated_at),
+                )
+        finally:
+            connection.close()
+
+    def reminders_enabled(self) -> bool:
+        """Return whether the desktop reminder may fire (defaults to enabled)."""
+        return bool(self.get_setting("reminders_enabled", True))
+
+    def set_reminders_enabled(self, enabled: bool) -> None:
+        """Persist whether the desktop reminder may fire."""
+        self.set_setting("reminders_enabled", bool(enabled))
+
 
 def _legacy_data_dir(legacy_root: Path) -> Path:
     """Return the data directory from a skill root or an explicit data directory."""

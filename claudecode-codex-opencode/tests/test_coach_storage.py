@@ -313,5 +313,36 @@ class LegacyMigrationTests(unittest.TestCase):
             )
 
 
+class ReminderSettingsTests(unittest.TestCase):
+    def test_reminders_enabled_defaults_to_true_when_unset(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            store = coach_storage.CoachStore(Path(tmp) / "state")
+            self.assertTrue(store.reminders_enabled())
+
+    def test_set_reminders_enabled_false_then_reads_back_false(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            state_dir = Path(tmp) / "state"
+            store = coach_storage.CoachStore(state_dir)
+            store.set_reminders_enabled(False)
+            self.assertFalse(store.reminders_enabled())
+
+    def test_set_reminders_enabled_can_turn_back_on(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            state_dir = Path(tmp) / "state"
+            store = coach_storage.CoachStore(state_dir)
+            store.set_reminders_enabled(False)
+            store.set_reminders_enabled(True)
+            self.assertTrue(store.reminders_enabled())
+
+    def test_generic_setting_round_trips_json_value(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            state_dir = Path(tmp) / "state"
+            store = coach_storage.CoachStore(state_dir)
+            store.set_setting("example", {"channel": "desktop", "on": True})
+            self.assertEqual(
+                store.get_setting("example"), {"channel": "desktop", "on": True}
+            )
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -696,5 +696,47 @@ class EnglishCoachTests(unittest.TestCase):
             )
 
 
+class RemindersSubcommandTests(unittest.TestCase):
+    def run_reminders(self, state_dir, action):
+        output = io.StringIO()
+        with contextlib.redirect_stdout(output):
+            result = english_coach.main(
+                [
+                    "--root",
+                    str(Path(__file__).resolve().parents[1]),
+                    "--state-dir",
+                    str(state_dir),
+                    "reminders",
+                    action,
+                    "--json",
+                ]
+            )
+        return result, output.getvalue()
+
+    def test_reminders_defaults_to_enabled_status(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            state_dir = Path(tmp) / "state"
+            result, output = self.run_reminders(state_dir, "status")
+            payload = json.loads(output)
+            self.assertEqual(result, 0)
+            self.assertTrue(payload["enabled"])
+
+    def test_reminders_off_then_status_reports_disabled(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            state_dir = Path(tmp) / "state"
+            self.assertEqual(self.run_reminders(state_dir, "off")[0], 0)
+            result, output = self.run_reminders(state_dir, "status")
+            self.assertEqual(result, 0)
+            self.assertFalse(json.loads(output)["enabled"])
+
+    def test_reminders_on_reenables_after_off(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            state_dir = Path(tmp) / "state"
+            self.assertEqual(self.run_reminders(state_dir, "off")[0], 0)
+            self.assertEqual(self.run_reminders(state_dir, "on")[0], 0)
+            result, output = self.run_reminders(state_dir, "status")
+            self.assertTrue(json.loads(output)["enabled"])
+
+
 if __name__ == "__main__":
     unittest.main()

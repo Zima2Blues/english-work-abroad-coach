@@ -48,7 +48,12 @@ def build_notification(result):
     )
 
 
-def append_log(state_dir, result, title, body):
+def should_notify(enabled, checked_in, notify_completed):
+    """Return whether a desktop notification should be sent."""
+    return enabled and (not checked_in or notify_completed)
+
+
+def append_log(state_dir, result, title, body, reason=None):
     log_path = Path(state_dir) / "reminder.log"
     log_path.parent.mkdir(parents=True, exist_ok=True)
     line = {
@@ -57,6 +62,8 @@ def append_log(state_dir, result, title, body):
         "title": title,
         "body": body,
     }
+    if reason:
+        line["reason"] = reason
     with log_path.open("a", encoding="utf-8") as handle:
         handle.write(json.dumps(line, ensure_ascii=False, sort_keys=True) + "\n")
 
@@ -86,12 +93,20 @@ def main(argv=None):
     state_dir = english_coach.resolve_state_dir(explicit=args.state_dir)
     result = build_reminder_result(root, args.date, state_dir)
     title, body = build_notification(result)
-    append_log(state_dir, result, title, body)
+    enabled = english_coach.store_for(state_dir).reminders_enabled()
+    reason = None if enabled else "disabled"
+    append_log(state_dir, result, title, body, reason=reason)
     notified = False
-    if not result["checked_in"] or args.notify_completed:
+    if should_notify(enabled, result["checked_in"], args.notify_completed):
         notified = notify(title, body)
     output = dict(result)
-    output["notification"] = {"title": title, "body": body, "sent": notified}
+    output["notification"] = {
+        "title": title,
+        "body": body,
+        "sent": notified,
+    }
+    if reason:
+        output["notification"]["disabled"] = True
     if args.json:
         print(json.dumps(output, ensure_ascii=False, indent=2, sort_keys=True))
     else:

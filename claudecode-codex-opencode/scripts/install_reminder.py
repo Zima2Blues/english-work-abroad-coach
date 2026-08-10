@@ -137,19 +137,58 @@ def install(
     return paths
 
 
+def uninstall(root=None, dry_run=False, systemd_user_dir=None):
+    """Stop the reminder timer, remove its unit files, and reload systemd.
+
+    This tears down only the installed systemd units. It never touches the user
+    state database, so learning data survives a skill uninstall.
+    """
+    systemd_dir = Path(systemd_user_dir).expanduser() if systemd_user_dir else Path.home() / ".config" / "systemd" / "user"
+    paths = unit_paths(systemd_dir)
+    removed = [path for path in paths.values() if path.exists()]
+
+    if dry_run:
+        return removed
+
+    subprocess.run(
+        ["systemctl", "--user", "disable", "--now", "%s.timer" % UNIT_NAME],
+        check=False,
+    )
+    for path in removed:
+        path.unlink()
+    if removed:
+        subprocess.run(["systemctl", "--user", "daemon-reload"], check=False)
+    return removed
+
+
 def build_parser():
-    parser = argparse.ArgumentParser(description="Install a daily user-level systemd reminder timer.")
+    parser = argparse.ArgumentParser(description="Install or uninstall a daily user-level systemd reminder timer.")
     parser.add_argument("--root", default=str(skill_root()))
     parser.add_argument("--state-dir", help="Writable user state folder used by the reminder.")
     parser.add_argument("--time", default="21:00", help="Daily reminder time in HH:MM. Default: 21:00.")
     parser.add_argument("--systemd-user-dir", help="Override unit output directory for testing.")
     parser.add_argument("--dry-run", action="store_true", help="Write unit files but do not enable the timer.")
     parser.add_argument("--no-enable", action="store_true", help="Write unit files but do not run systemctl.")
+    parser.add_argument("--uninstall", action="store_true", help="Remove the reminder timer and its unit files.")
     return parser
 
 
 def main(argv=None):
     args = build_parser().parse_args(argv)
+    if args.uninstall:
+        removed = uninstall(
+            args.root,
+            dry_run=args.dry_run,
+            systemd_user_dir=args.systemd_user_dir,
+        )
+        if removed:
+            for path in removed:
+                print("Removed %s" % path)
+        else:
+            print("No reminder timer unit found.")
+        if args.dry_run:
+            print("Timer removal not performed because --dry-run was passed.")
+        return 0
     paths = install(
         args.root,
         args.time,

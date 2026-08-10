@@ -937,6 +937,40 @@ v0.3 只包含：表达复习队列、错误标签、到期复习项注入今日
 
 独立计划必须继续采用 TDD，定义 `review_items` 数据表、调度算法、CLI/JSON 输出兼容和迁移版本。未经设计批准，不修改当前任务生成逻辑。
 
+### Task 11：可配置提醒与干净卸载
+
+**目标：** 卸载或停用 skill 时，其关联的 systemd 定时器等运行服务随之一并停用；桌面提醒可通过设置独立开关（默认开启）。卸载只停服务，保留用户学习数据。
+
+**背景：** 用户部署 skill 并安装每日提醒后卸载 skill，但 `english-work-abroad-coach.timer` 与 `.service` 单元仍被安装并启用，导致电脑持续提醒。此前唯一的停用方式是手写 `systemctl --user disable --now`，单元文件和 `daemon-reload` 由用户手工处理，容易残留。关于 email 的反馈来自其他平台/外部功能，本仓库内需要处理的是 systemd 桌面提醒。
+
+**Files:**
+- Modify: `claudecode-codex-opencode/scripts/coach_storage.py`（共享）
+- Modify: `claudecode-codex-opencode/scripts/english_coach.py`（共享）
+- Modify: `claudecode-codex-opencode/scripts/reminder_runner.py`（共享）
+- Modify: `claudecode-codex-opencode/scripts/install_reminder.py`（仅 Linux）
+- Modify: `claudecode-codex-opencode/tests/test_coach_storage.py`、`test_english_coach.py`、`test_reminder_install.py`
+- Modify: `claudecode-codex-opencode/SKILL.md`、`references/installing.md`、`README.md`
+
+- [x] **Step 1：持久化可配置开关**
+
+`CoachStore` 增加通用 `get_setting` / `set_setting`（复用现有 `settings` 表与 `ON CONFLICT` upsert），并提供 `reminders_enabled()`（默认 True）与 `set_reminders_enabled(bool)`。开关保存在用户状态数据库，重装 skill 不丢失。
+
+- [x] **Step 2：新增 reminders 子命令**
+
+`english_coach.py` 增加 `reminders on|off|status`：`on` / `off` 写开关；`status` 打印当前开关和是否已安装 systemd 定时器，支持 `--json`。
+
+- [x] **Step 3：提醒运行器尊重开关**
+
+`reminder_runner.py` 每次被定时器触发时读取 `reminders_enabled()`。关闭时仍写入 `reminder.log`（带 `reason: "disabled"`）但跳过桌面通知；引入 `should_notify(enabled, checked_in, notify_completed)` 便于测试。
+
+- [x] **Step 4：干净卸载命令**
+
+`install_reminder.py` 增加 `uninstall()` 与 `--uninstall`：停用并移除 timer，删除 `.service` / `.timer` 单元文件，执行 `daemon-reload`；不触碰 coach.db（保留数据）。支持 `--dry-run` 与 `--systemd-user-dir` 用于测试。改用 `reminders off` 可只关桌面提醒而不移除定时器。
+
+- [x] **Step 5：共享脚本同步与文档**
+
+用 `tools/sync_distributions.py --write` 将三个共享脚本同步到 OpenClaw 与 Hermes；`install_reminder.py` 为 Linux 专属不同步。更新 `SKILL.md`、`references/installing.md`、`README.md` 的开关与卸载说明。
+
 ## 8. 里程碑与发布顺序
 
 | 里程碑 | 包含任务 | 可交付结果 | 发布判断 |
@@ -944,7 +978,7 @@ v0.3 只包含：表达复习队列、错误标签、到期复习项注入今日
 | M1 基线与单一来源 | Task 1-2 | 一键验证、共享文件不漂移 | 内部开发可用 |
 | M2 跨设备安装 | Task 3 | Python 3.9+ 契约、uv 路径、运行零三方依赖 | 新设备可重复安装 |
 | M3 数据可靠性 | Task 4-5 | 外部 SQLite、旧数据迁移、导入导出 | 多平台共享同一用户状态 |
-| M4 正确性与提醒 | Task 6-7 | 边界修复、doctor、可靠 systemd 单元 | 日常长期使用可用 |
+| M4 正确性与提醒 | Task 6-7、Task 11 | 边界修复、doctor、可靠 systemd 单元、可配置开关、干净卸载 | 日常长期使用可用 |
 | M5 分发质量 | Task 8-9 | 精简 skill、CI、0.2.0 发布包 | 可公开测试分发 |
 | M6 学习智能（搁置） | Task 10 及其后续计划 | 自适应复习设计和 v0.3 计划 | 取得真实使用数据并单独批准后实施 |
 

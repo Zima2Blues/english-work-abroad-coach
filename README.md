@@ -277,10 +277,23 @@ Check timer status:
 systemctl --user status english-work-abroad-coach.timer
 ```
 
-Disable the reminder:
+Turn desktop reminders off or back on (the timer may stay installed; it just stops
+notifying), and check the current state:
 
 ```bash
-systemctl --user disable --now english-work-abroad-coach.timer
+cd claudecode-codex-opencode
+.venv/bin/python scripts/english_coach.py reminders off
+.venv/bin/python scripts/english_coach.py reminders on
+.venv/bin/python scripts/english_coach.py reminders status
+```
+
+Fully uninstall the reminder so no timer or unit file keeps running (for example
+after removing the skill). This stops the timer, deletes its systemd unit files,
+and reloads systemd; your learning data is kept:
+
+```bash
+cd claudecode-codex-opencode
+.venv/bin/python scripts/install_reminder.py --uninstall
 ```
 
 ## Skill Installation
