@@ -971,6 +971,37 @@ v0.3 只包含：表达复习队列、错误标签、到期复习项注入今日
 
 用 `tools/sync_distributions.py --write` 将三个共享脚本同步到 OpenClaw 与 Hermes；`install_reminder.py` 为 Linux 专属不同步。更新 `SKILL.md`、`references/installing.md`、`README.md` 的开关与卸载说明。
 
+### Task 12：跨平台提醒开关与卸载协议
+
+**目标：** 用户可在 skill 内直接开关提醒；在 Agent 平台（含 Hermes）卸载 skill 时，先停用所有相关服务或定时器，再删目录，避免“卸载后仍被提醒”。
+
+**背景：** 用户按自然方式（删除 skill 目录）卸载后，`~/.config/systemd/user/` 中的定时器仍被启用并到点触发，而唯一的卸载脚本 `install_reminder.py --uninstall` 也随目录被删，只能手写 `systemctl --user disable --now`（= 计划里点名的残留问题）。
+
+**Files:**
+- Modify（仅 Linux）：`claudecode-codex-opencode/scripts/install_reminder.py`
+- Modify（各自）：三个平台 `SKILL.md`、`claudecode-codex-opencode/tests/test_reminder_install.py`、`test_skill_documentation.py`
+- Modify：`claudecode-codex-opencode/references/installing.md`、`README.md`
+- Sync：N/A（未改共享脚本；仅 `--check` 验证）
+
+- [x] **Step 1：安装时在用户状态目录写入可独立卸载的标记**
+
+`install_reminder.py` 新增 `uninstall.systemd.sh` 生成：安装且未 `--dry-run` / `--no-enable` 时，把纯 `sh` 卸载脚本写入解析后的状态目录（`$XDG_STATE_HOME` 或 `~/.local/state`），可执行；脚本停用并移除 timer、删除 `.service`/`.timer`、`daemon-reload`，容错等同于现有 `uninstall()`。skill 目录删除后仍可运行。
+
+- [x] **Step 2：三个平台 SKILL.md 加入开关与卸载协议**
+
+每个平台的 Reminder 段落加入：用户要求开/关时运行 `reminders off` / `reminders on` / `reminders status`（偏好存于外部状态库，重装保留）。加入“先停服务、再删目录”的卸载协议：canonical 顺序为 `reminders status` → `install_reminder.py --uninstall` → `systemctl --user list-timers` 确认 → 删目录，并以标记脚本作为“目录已删”的兜底；Hermes 先经调度器移除 `blueprint` cron（`0 21 * * *`）再删目录；OpenClaw 先经自身调度器移除安排再删目录。三个文件保持 ≤200 行。
+
+- [x] **Step 3：测试与文档**
+
+`test_reminder_install.py` 新增标记写入、可执行、bash 脚本移除单元、dry-run/`--no-enable` 不写标记；`test_skill_documentation.py` 新增开关用词、删除前顺序、平台边界（canonical 引用 Linux 且含 `uninstall.systemd.sh`；openclaw/hermes 不含 `install_reminder.py` 且指向各自调度）。`installing.md` / `README.md` 写明“先 `--uninstall` 再删目录”及其标记兜底。随后 `verify_project.py`、`build_release.py` 全绿。
+
+- [x] **Step 4：提交本任务**
+
+```bash
+git add claudecode-codex-opencode hermes openclaw README.md docs
+git commit -m "feat: keep reminder uninstall available after skill removal"
+```
+
 ## 8. 里程碑与发布顺序
 
 | 里程碑 | 包含任务 | 可交付结果 | 发布判断 |

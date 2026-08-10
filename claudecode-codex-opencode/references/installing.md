@@ -213,14 +213,19 @@ pop-up, and the preference survives a skill reinstall:
 .venv/bin/python scripts/english_coach.py reminders status
 ```
 
-Re-enable with `reminders on`. To fully stop and remove the installed timer,
-for example after deleting the skill folder, use `--uninstall`. It stops the
-timer, removes the `.service` and `.timer` unit files, and reloads systemd so
-no reminder keeps firing:
+Re-enable with `reminders on`.
+
+To fully stop and remove the installed timer, run `--uninstall` **while this
+skill folder still exists**. It stops the timer, removes the `.service` and
+`.timer` unit files, and reloads systemd so no reminder keeps firing:
 
 ```bash
 .venv/bin/python scripts/install_reminder.py --uninstall
 ```
+
+If the skill folder has already been deleted, run the uninstall marker that
+installation wrote into the user state directory instead (same effect):
+`bash $XDG_STATE_HOME/english-work-abroad-coach/uninstall.systemd.sh`.
 
 Uninstalling the timer never touches the user state database, so your plan,
 check-ins, and progress remain available after reinstalling the skill.

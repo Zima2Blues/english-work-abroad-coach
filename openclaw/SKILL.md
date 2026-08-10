@@ -67,8 +67,17 @@ output and intelligibility over perfect grammar.
 For `summary`, report current and longest streaks, missed dates, completion
 rate, total minutes, the next 50-day target, and one weekly adjustment.
 
-## Reminder Boundary
+## Reminder and Uninstall
 
 `reminder` can prepare a one-shot reminder. Use OpenClaw's scheduler or the
-host scheduler only after confirming its mechanism. Do not call the Linux-only
-`install_reminder.py`; it is not part of this distribution.
+host scheduler only after confirming its mechanism. This distribution has no
+systemd installer; recurring execution is the scheduler's job.
+
+To show or change the reminder preference, run `reminders status`, `reminders
+off`, or `reminders on` with `scripts/english_coach.py`. The preference lives
+in the external state database and survives a skill reinstall.
+
+When the user asks to uninstall this skill, stop every related scheduling
+entry **before** removing the folder: disable or remove this skill's scheduled
+reminder through OpenClaw's scheduler, confirm `reminders status` shows it
+stopped, then remove the skill folder.

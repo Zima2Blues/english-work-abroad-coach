@@ -83,10 +83,20 @@ reinstall.
 
 # Re-enable them
 .venv/bin/python scripts/english_coach.py reminders on
-
-# Uninstall: stop the timer and remove its systemd unit files (learning data is kept)
-.venv/bin/python scripts/install_reminder.py --uninstall
 ```
+
+### Uninstall
+
+Before deleting this skill folder, stop the timer so no unit keeps running:
+
+1. Run `reminders status` to confirm the current state.
+2. Run `scripts/install_reminder.py --uninstall` — stops the timer, removes the
+   systemd unit files, and reloads systemd. Learning data is kept.
+3. Confirm `systemctl --user list-timers` no longer lists the coach timer.
+4. Only then delete this folder.
+
+If the folder is already gone, run the marker written during install instead
+(same effect): `bash $XDG_STATE_HOME/english-work-abroad-coach/uninstall.systemd.sh`.
 
 ## Learning Rules
 

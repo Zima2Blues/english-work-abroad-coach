@@ -2,6 +2,8 @@ import contextlib
 import importlib.util
 import io
 import json
+import os
+import subprocess
 import tempfile
 import unittest
 from pathlib import Path
@@ -100,6 +102,90 @@ class ReminderInstallerTests(unittest.TestCase):
                 service,
             )
             self.assertIn('--state-dir "%s"' % state_dir, service)
+
+    def _fake_skill(self, tmp):
+        root = Path(tmp) / "English Coach"
+        python = root / ".venv" / "bin" / "python"
+        python.parent.mkdir(parents=True)
+        python.touch()
+        return root
+
+    def test_install_writes_executable_uninstall_marker_into_state_dir(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = self._fake_skill(tmp)
+            state_dir = Path(tmp) / "state"
+            systemd_dir = Path(tmp) / "systemd"
+
+            with mock.patch.object(install_reminder.subprocess, "run"):
+                install_reminder.install(
+                    root,
+                    state_dir=state_dir,
+                    systemd_user_dir=systemd_dir,
+                )
+
+            marker = state_dir / install_reminder.UNINSTALL_MARKER_NAME
+            self.assertTrue(marker.is_file())
+            self.assertTrue(os.access(marker, os.X_OK), "marker must be executable")
+            text = marker.read_text(encoding="utf-8")
+            self.assertIn(
+                "systemctl --user disable --now english-work-abroad-coach.timer",
+                text,
+            )
+            self.assertIn("rm -f", text)
+            self.assertIn("daemon-reload", text)
+
+    def test_marker_bash_script_removes_unit_files(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = self._fake_skill(tmp)
+            home_dir = Path(tmp) / "home"
+            unit_dir = home_dir / ".config" / "systemd" / "user"
+            unit_dir.mkdir(parents=True, exist_ok=True)
+            unit_names = install_reminder.unit_paths(unit_dir)
+            unit_names["service"].write_text("[Unit]\nDescription=t\n", encoding="utf-8")
+            unit_names["timer"].write_text("[Unit]\nDescription=t\n", encoding="utf-8")
+            state_dir = Path(tmp) / "state"
+
+            with mock.patch.object(install_reminder.subprocess, "run"):
+                install_reminder.install(
+                    root,
+                    state_dir=state_dir,
+                    systemd_user_dir=unit_dir,
+                )
+
+            marker = state_dir / install_reminder.UNINSTALL_MARKER_NAME
+            env = dict(os.environ, HOME=str(home_dir))
+            subprocess.run(
+                ["bash", str(marker)],
+                check=True,
+                env=env,
+            )
+
+            self.assertFalse(unit_names["service"].exists())
+            self.assertFalse(unit_names["timer"].exists())
+
+    def test_marker_not_written_for_dry_run_or_no_enable(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = self._fake_skill(tmp)
+            state_dir = Path(tmp) / "state"
+            systemd_dir = Path(tmp) / "systemd"
+
+            with mock.patch.object(install_reminder.subprocess, "run"):
+                install_reminder.install(
+                    root,
+                    dry_run=True,
+                    state_dir=state_dir,
+                    systemd_user_dir=systemd_dir,
+                )
+                install_reminder.install(
+                    root,
+                    enable=False,
+                    state_dir=state_dir,
+                    systemd_user_dir=systemd_dir,
+                )
+
+            self.assertFalse(
+                (state_dir / install_reminder.UNINSTALL_MARKER_NAME).exists()
+            )
 
     def test_validate_time_accepts_hh_mm_and_rejects_invalid_values(self):
         self.assertEqual(install_reminder.validate_time("09:05"), "09:05")

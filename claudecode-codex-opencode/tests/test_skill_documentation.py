@@ -47,6 +47,49 @@ class SkillDocumentationTests(unittest.TestCase):
             self.assertNotIn("data/plan.json", text, reference)
             self.assertIn("external SQLite state directory", text, reference)
 
+    def test_skill_docs_document_reminder_toggle(self):
+        for distribution in DISTRIBUTIONS:
+            text = (REPOSITORY_ROOT / distribution / "SKILL.md").read_text(
+                encoding="utf-8"
+            )
+            self.assertTrue(
+                any(
+                    verb in text
+                    for verb in ("reminders off", "reminders on", "reminders status")
+                ),
+                "%s SKILL.md must document the reminder toggle" % distribution,
+            )
+
+    def test_skill_docs_document_before_delete_order(self):
+        for distribution in DISTRIBUTIONS:
+            text = (REPOSITORY_ROOT / distribution / "SKILL.md").read_text(
+                encoding="utf-8"
+            )
+            self.assertIn("uninstall", text, "%s must document uninstall" % distribution)
+            self.assertIn("before", text, "%s must state order" % distribution)
+
+    def test_skill_docs_respect_platform_boundaries(self):
+        canonical = (REPOSITORY_ROOT / "claudecode-codex-opencode" / "SKILL.md").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn("install_reminder.py --uninstall", canonical)
+        self.assertIn("uninstall.systemd.sh", canonical)
+
+        for distribution in ("openclaw", "hermes"):
+            text = (REPOSITORY_ROOT / distribution / "SKILL.md").read_text(
+                encoding="utf-8"
+            )
+            self.assertNotIn(
+                "install_reminder.py",
+                text,
+                "%s must not import the Linux-only installer" % distribution,
+            )
+            if distribution == "hermes":
+                self.assertIn("blueprint", text)
+                self.assertIn("cron", text)
+            else:
+                self.assertIn("scheduler", text)
+
     def test_openai_default_prompt_uses_current_command_names(self):
         metadata = yaml.safe_load(
             (ROOT / "agents" / "openai.yaml").read_text(encoding="utf-8")

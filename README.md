@@ -288,13 +288,17 @@ cd claudecode-codex-opencode
 ```
 
 Fully uninstall the reminder so no timer or unit file keeps running (for example
-after removing the skill). This stops the timer, deletes its systemd unit files,
-and reloads systemd; your learning data is kept:
+after removing the skill). Run this **before deleting** the skill folder so the
+installer script is still available. It stops the timer, deletes its systemd
+unit files, and reloads systemd; your learning data is kept:
 
 ```bash
 cd claudecode-codex-opencode
 .venv/bin/python scripts/install_reminder.py --uninstall
 ```
+
+If the folder is already gone, run the marker written during install instead:
+`bash ~/.local/state/english-work-abroad-coach/uninstall.systemd.sh`.
 
 ## Skill Installation
 
