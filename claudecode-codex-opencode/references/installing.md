@@ -162,11 +162,14 @@ Export and edit a plan only through the command interface:
 ## Daily Reminder
 
 Check the Linux desktop prerequisites before installing a user-level systemd
-reminder timer:
+reminder timer (Linux only):
 
 ```bash
 .venv/bin/python scripts/english_coach.py doctor --json
 ```
+
+On Windows the systemd timer is not installed; see the Windows Reminder And
+Uninstall section below.
 
 `notify-send` is optional: when it is unavailable, reminders are still logged
 to the state directory. Install the timer with an explicit state directory when
@@ -229,6 +232,24 @@ installation wrote into the user state directory instead (same effect):
 
 Uninstalling the timer never touches the user state database, so your plan,
 check-ins, and progress remain available after reinstalling the skill.
+
+## Windows Reminder And Uninstall
+
+On Windows this skill installs no systemd timer or scheduled task by default;
+reminder behavior is controlled by the stored preference, so there is no local
+service to remove when uninstalling.
+
+Stop notifications and prepare for removal:
+
+```powershell
+.venv\Scripts\python.exe scripts\english_coach.py reminders off
+.venv\Scripts\python.exe scripts\english_coach.py reminders status
+```
+
+If a daily task was created manually in Windows Task Scheduler, delete that
+task before removing the skill folder. Then delete the folder; `reminders off`
+already ensures nothing keeps running. Learning data in
+`%LOCALAPPDATA%\EnglishWorkAbroadCoach` is kept.
 
 ## Current Dependencies
 

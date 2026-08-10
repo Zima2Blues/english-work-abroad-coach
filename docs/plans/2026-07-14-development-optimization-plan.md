@@ -1002,6 +1002,38 @@ git add claudecode-codex-opencode hermes openclaw README.md docs
 git commit -m "feat: keep reminder uninstall available after skill removal"
 ```
 
+### Task 13：Windows 卸载协议与 Hermes 邮件提醒移除
+
+**目标：** 在 Agent 平台（含 Hermes）卸载 skill 时，先停用所有相关本机服务或定时器再删目录；Windows 的 skill 卸载前也先停相关服务；Hermes 的邮件提醒在卸载时一并移除。
+
+**背景：** 用户要求在 Windows（Claude Code / opencode）以及 Hermes 上，卸载 skill 时自动先停本机相关服务、定时器（含邮件提醒），再完成卸载。当前仓库：Windows 无任何本机定时器实现（无 schtasks）；Hermes 邮件提醒由 Hermes 平台调度器（`metadata.hermes.blueprint` cron `0 21 * * *`）持有，skill 脚本无法直接删除，只能靠 Agent 按 SKILL.md 协议先经 Hermes 调度器移除。
+
+**设计取舍：** 采用 W-min —— 不新增任何脚本或 schtasks 代码（否则需同步改了 `SHARED_PATHS`、`build_release.py` 与 `test_release_build.py` 的精确文件清单）。Windows 上可被 skill 实际控制的“本机服务”只有偏好开关（`reminders off`），其余（手建 Task Scheduler 任务、Hermes email）通过卸载协议由 Agent 先关停。
+
+**Files:**
+- Modify（各自）：三个平台 SKILL.md；`claudecode-codex-opencode/references/installing.md`（新增 Windows Reminder And Uninstall 小节）；`README.md`（Daily Reminder 补 Windows 行）。
+- Modify：`claudecode-codex-opencode/tests/test_skill_documentation.py`
+- No new scripts; N/A: `tools/`、`tests/test_release_build.py`、共享文件（`sync --check` 仍绿）
+
+- [x] **Step 1：canonical SKILL.md 说明 Linux/Windows 差异并令“先停服务再删目录”无条件**
+
+Reminder 段注明：Linux 用 systemd timer；Windows 默认不装定时器、行为仅由下面开关控制，`reminders off` 即停桌面通知。Uninstall 段把“先停服务”设为对所有平台的前提：Linux 走 `install_reminder.py --uninstall` + 标记兜底；Windows 走 `reminders off`，若手建过 Task Scheduler 任务先删再删目录。
+
+- [x] **Step 2：Hermes 显式并入邮件提醒**
+
+`hermes/SKILL.md` 明确：`metadata.hermes.blueprint` 是发送邮件（或通知）提醒的载体，由 Hermes 调度器持有、无法从 skill 内部删除；卸载第 1 步即经 Hermes 调度器移除该 cron（同时停邮件），再 `reminders status`，最后才从 Hermes 删目录。
+
+- [x] **Step 3：文档结构测试与全量验证**
+
+`test_skill_documentation.py` 新增 `test_skill_docs_cover_windows_and_email_uninstall`（canonical 含 Windows 与 `reminders off`；hermes 含 email 与 blueprint）。随后 `sync --check`、`verify_project.py`、全部套件、`build_release.py --all` 全绿；三个 SKILL.md 保持 ≤200 行。
+
+- [x] **Step 4：提交本任务**
+
+```bash
+git add claudecode-codex-opencode hermes openclaw README.md docs
+git commit -m "docs: stop all skill services before uninstall on every platform"
+```
+
 ## 8. 里程碑与发布顺序
 
 | 里程碑 | 包含任务 | 可交付结果 | 发布判断 |

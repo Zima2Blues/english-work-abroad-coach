@@ -79,8 +79,9 @@ rate, total minutes, the next 50-day target, and one weekly adjustment.
 ## Reminder and Uninstall
 
 The `metadata.hermes.blueprint` default runs at 21:00 local time and may invoke
-`reminder_runner.py`. Let Hermes or the host scheduler own recurring execution.
-This distribution has no systemd installer; recurring execution is the scheduler's job.
+`reminder_runner.py`. This blueprint is also what sends the email (or
+notification-host) reminder through Hermes; it runs in the Hermes scheduler,
+not in this skill. Let Hermes or the host scheduler own recurring execution.
 
 To show or change the reminder preference, run `reminders status`, `reminders
 off`, or `reminders on` with `scripts/english_coach.py`. The preference lives
@@ -90,6 +91,7 @@ When the user asks to uninstall this skill, stop every related scheduling
 entry **before** removing the folder:
 
 1. Remove or disable this skill's `metadata.hermes.blueprint` cron entry
-   (`0 21 * * *`) through the Hermes scheduler.
+   (`0 21 * * *`) through the Hermes scheduler — this also stops the email
+   reminder. It cannot be removed from inside the skill folder.
 2. Confirm `reminders status` reports the timer (where applicable) as stopped.
 3. Only then remove the skill folder from Hermes.

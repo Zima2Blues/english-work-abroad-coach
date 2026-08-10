@@ -90,6 +90,19 @@ class SkillDocumentationTests(unittest.TestCase):
             else:
                 self.assertIn("scheduler", text)
 
+    def test_skill_docs_cover_windows_and_email_uninstall(self):
+        canonical = (REPOSITORY_ROOT / "claudecode-codex-opencode" / "SKILL.md").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn("Windows", canonical)
+        self.assertIn("reminders off", canonical)
+
+        hermese = (REPOSITORY_ROOT / "hermes" / "SKILL.md").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn("email", hermese)
+        self.assertIn("blueprint", hermese)
+
     def test_openai_default_prompt_uses_current_command_names(self):
         metadata = yaml.safe_load(
             (ROOT / "agents" / "openai.yaml").read_text(encoding="utf-8")

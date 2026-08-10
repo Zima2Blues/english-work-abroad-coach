@@ -65,10 +65,13 @@ and longest streaks, missed dates, completion rate, total minutes, the next
 
 ### Reminder
 
-`reminder` works while an agent is invoked. For a Linux desktop systemd timer,
-first confirm `doctor` and then follow `references/installing.md` for
-`scripts/install_reminder.py`. The timer uses the external state directory;
-agents cannot wake themselves when no session is running.
+`reminder` works while an agent is invoked. On Linux a user-level systemd timer
+can be installed with `scripts/install_reminder.py` (confirm `doctor` first,
+then follow `references/installing.md` for Linux setup or Windows reminder
+details). The timer uses the external state directory; agents cannot wake
+themselves when no session is running. On Windows no timer is installed by
+default; reminder behavior is driven only by the preference below, and
+`reminders off` stops desktop notifications.
 
 The desktop reminder can be switched off or back on, and the timer can be removed
 cleanly. Preferences live in the user state database, so they survive a skill
@@ -87,7 +90,9 @@ reinstall.
 
 ### Uninstall
 
-Before deleting this skill folder, stop the timer so no unit keeps running:
+Before deleting this skill folder, stop every reminder service first.
+
+On Linux:
 
 1. Run `reminders status` to confirm the current state.
 2. Run `scripts/install_reminder.py --uninstall` — stops the timer, removes the
@@ -97,6 +102,9 @@ Before deleting this skill folder, stop the timer so no unit keeps running:
 
 If the folder is already gone, run the marker written during install instead
 (same effect): `bash $XDG_STATE_HOME/english-work-abroad-coach/uninstall.systemd.sh`.
+
+On Windows: run `reminders off`; if a daily task was created manually in
+Windows Task Scheduler, delete that task first, then delete the folder.
 
 ## Learning Rules
 

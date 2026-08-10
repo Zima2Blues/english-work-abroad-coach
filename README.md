@@ -128,7 +128,7 @@ It can:
 - Maintain a 50-day cycle system inside a 500-day long-term goal.
 - Apply scientific learning guidance: spaced practice, retrieval practice, comprehensible input, shadowing, output, and feedback.
 - Create a local `.venv` without adding runtime dependencies to system Python.
-- Install a user-level `systemd` timer for daily reminders.
+- Install a user-level `systemd` timer for daily reminders (Linux).
 
 ## Current Version Layout
 
@@ -270,6 +270,10 @@ Install a daily Linux desktop reminder at 21:00:
 cd claudecode-codex-opencode
 .venv/bin/python scripts/install_reminder.py --time 21:00
 ```
+
+On Windows no local timer is installed by default; before deleting the skill
+folder run `reminders off` or remove any manually created Task Scheduler task
+first.
 
 Check timer status:
 
