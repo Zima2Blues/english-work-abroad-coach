@@ -585,6 +585,31 @@ class EnglishCoachTests(unittest.TestCase):
                 [{"date": "2026-07-14", "minutes": 30}],
             )
 
+    def test_state_and_root_paths_may_contain_spaces(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            workspace = Path(tmp)
+            root = workspace / "my skill dir"
+            state_dir = workspace / "my state dir"
+            write_plan(root)
+
+            result, output = self.run_cli(
+                [
+                    "--root",
+                    str(root),
+                    "--state-dir",
+                    str(state_dir),
+                    "today",
+                    "--date",
+                    "2026-07-14",
+                    "--json",
+                ]
+            )
+
+            self.assertEqual(result, 0)
+            task = json.loads(output)
+            self.assertEqual(task["date"], "2026-07-14")
+            self.assertTrue((state_dir / "coach.db").exists())
+
     def test_init_and_plan_commands_protect_existing_plan_and_validate_updates(self):
         with tempfile.TemporaryDirectory() as tmp:
             workspace = Path(tmp)
